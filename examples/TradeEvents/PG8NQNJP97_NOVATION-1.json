@@ -1,12 +1,13 @@
 {
   "choice" : "ProposeNovation",
   "argument": {
-    "ps" : [{
+    "ps" : [
+      {
+        "p": "CLIENT-C06",
+        "id": "5264151754007"
+      },{
       "p": "DEALER-D01",
       "id": "3993378688666"
-    },{
-      "p": "CLIENT-C06",
-      "id": "5264151754007"
     },{
       "p": "CCP-P01",
       "id": "9377538274179"
