@@ -114,54 +114,61 @@ test_Novation = scenario do
 
   -- Execution
   passToDate $ D.date 2019 Sep 30
-  epCid <- submit p1.p do exercise maCid ProposeNovation with exerciser = p1.p, ps = [p1, p2, p3, p4], ciCid = head inceptionResult.ciCids, ..
-  epCid <- fromLeftS "Unknown error" =<< (submit p2.p do exercise epCid EP.Accept with exerciser = p2.p)
-  epCid <- fromLeftS "Unknown error" =<< (submit p3.p do exercise epCid EP.Accept with exerciser = p3.p)
-  eiCid <- fromRightS "Unknown error" =<< (submit p4.p do exercise epCid EP.Accept with exerciser = p4.p)
-  submit p1.p do exercise eiCid Lifecycle with exerciser = p1.p, ciCids = inceptionResult.ciCids, ctiCids = []
+  epCid <- submit p1.p do exercise maCid ProposeNovation with exerciser = p1.p, ps = [p1, p2, p3], ciCid = head inceptionResult.ciCids, ..
+  -- let epCid1 = epCid!!0
+  -- let epCid2 = epCid!!1
+
+  -- -- show p1
+  -- epCid1 <- fromRightS "Unknown error" =<< (submit p3.p do exercise  epCid1 EP.Accept with exerciser = p3.p)
+  -- -- epCid1 <- fromLeftS "Unknown error" =<< (submit p1.p do exercise  epCid1 EP.Accept with exerciser = p1.p)
+
+  -- epCid2 <- fromLeftS "Unknown error" =<< (submit p3.p do exercise  epCid2 EP.Accept with exerciser = p3.p)
+  -- epCid2 <- fromRightS "Unknown error" =<< (submit p2.p do exercise  epCid2 EP.Accept with exerciser = p2.p)
+
+  -- -- submit p3.p do exercise epCid1 Lifecycle with exerciser = p3.p, ciCids = inceptionResult.ciCids, ctiCids = []
 
   return ()
 
 
-test_Derived = scenario do
-  -- New Trade
-  (maCid, inceptionResult, inceptionNotification) <- test_Inception
-  let ciCid = head inceptionResult.ciCids
-  let [p1, p2] = inceptionNotification.ps
-  ci <- submit p2.p do fetch ciCid
-  let p2Account = (fromSome (ci.d.party!!1).account).accountNumber
+-- test_Derived = scenario do
+--   -- New Trade
+--   (maCid, inceptionResult, inceptionNotification) <- test_Inception
+--   let ciCid = head inceptionResult.ciCids
+--   let [p1, p2] = inceptionNotification.ps
+--   ci <- submit p2.p do fetch ciCid
+--   let p2Account = (fromSome (ci.d.party!!1).account).accountNumber
 
-  -- Cash
-  pFED <- getParty "FED"
-  transferCid <- submit pFED do create CashTransferRequest with
-                                          issuer = pFED
-                                          sender = pFED
-                                          receiver = p2.p
-                                          accountFrom = "fedAccount"
-                                          currency = "USD"
-                                          amount = 1000000.0
-  cashCid <- submit p2.p do exercise transferCid Cash.Accept with accountTo = p2Account.value
+--   -- Cash
+--   pFED <- getParty "FED"
+--   transferCid <- submit pFED do create CashTransferRequest with
+--                                           issuer = pFED
+--                                           sender = pFED
+--                                           receiver = p2.p
+--                                           accountFrom = "fedAccount"
+--                                           currency = "USD"
+--                                           amount = 1000000.0
+--   cashCid <- submit p2.p do exercise transferCid Cash.Accept with accountTo = p2Account.value
 
-  -- Reference Data
-  usnyHCICid <- createHolidayCalendarInstance usnyHCI
-  let refData = emptyRefData with holidayCalendarCids = [usnyHCICid]
+--   -- Reference Data
+--   usnyHCICid <- createHolidayCalendarInstance usnyHCI
+--   let refData = emptyRefData with holidayCalendarCids = [usnyHCICid]
 
-  -- Discovery
-  dewCid <- submit p1.p do create DeriveEventsWorkflow with sig = p1.p
-  edCids <- submit p1.p do exercise dewCid DeriveEventsWorkflow.Trigger with refData, ciCid, fromDate = None, toDate = None
+--   -- Discovery
+--   dewCid <- submit p1.p do create DeriveEventsWorkflow with sig = p1.p
+--   edCids <- submit p1.p do exercise dewCid DeriveEventsWorkflow.Trigger with refData, ciCid, fromDate = None, toDate = None
 
-  -- Create event
-  passToDate $ D.date 2018 Sep 26
-  eiCid <- submit p1.p do exercise (head edCids) CreateEvent with maCid, ciCid, refData
+--   -- Create event
+--   passToDate $ D.date 2018 Sep 26
+--   eiCid <- submit p1.p do exercise (head edCids) CreateEvent with maCid, ciCid, refData
 
-  -- Instruct transfers
-  instructResult <- submit p1.p do exercise eiCid Instruct with exerciser = p1.p
+--   -- Instruct transfers
+--   instructResult <- submit p1.p do exercise eiCid Instruct with exerciser = p1.p
 
-  -- Allocate cash
-  awCid <- submit p2.p do create AllocateWorkflow with sig = p2.p
-  allocResult <- submit p2.p do exercise awCid AllocateWorkflow.Trigger with ctiCids = (head instructResult.ctiCids), cashCids = [cashCid]
+--   -- Allocate cash
+--   awCid <- submit p2.p do create AllocateWorkflow with sig = p2.p
+--   allocResult <- submit p2.p do exercise awCid AllocateWorkflow.Trigger with ctiCids = (head instructResult.ctiCids), cashCids = [cashCid]
 
-  -- Lifecycle
-  submit p1.p do exercise instructResult.eiCid Lifecycle with exerciser = p1.p, ciCids = [ciCid], ctiCids = [allocResult.ctiCids]
+--   -- Lifecycle
+--   submit p1.p do exercise instructResult.eiCid Lifecycle with exerciser = p1.p, ciCids = [ciCid], ctiCids = [allocResult.ctiCids]
 
-  return ()
+--   return ()
