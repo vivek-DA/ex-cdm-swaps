@@ -5,10 +5,10 @@
       "p": "DEALER-D01",
       "id": "3993378688666"
     },{
-      "p": "CCP-P01",
+      "p": "CLIENT-C06",
       "id": "5264151754007"
     },{
-      "p": "DEALER-D03",
+      "p": "CCP-P01",
       "id": "9377538274179"
     }],
     "base": {
@@ -48,14 +48,14 @@
     "contractNew" : {
       "party" : [ {
         "id": "9377538274179",
-        "name" : {"value" : "DEALER-D03"},
+        "name" : {"value" : "CCP-P01"},
         "partyId" : [ {"value": "9377538274179"} ],
         "account" : {
           "accountNumber" : {"value" : "D03225622378"}
         }
       }, {
         "id": "5264151754007",
-        "name" : {"value" : "CCP-P01"},
+        "name" : {"value" : "CLIENT-C06"},
         "partyId" : [ {"value": "5264151754007"} ],
         "account" : {
           "accountNumber" : {"value" : "P01547927812"}

@@ -15,7 +15,7 @@ emptyRefData = RefData with
 
 usnyHCI : Scenario HolidayCalendarInstance
 usnyHCI = do
-  observers <- mapA getParty ["CCP-P01", "DEALER-D01", "DEALER-D02", "DEALER-D03", "CLIENT-C04"]
+  observers <- mapA getParty ["CLIENT-C06", "DEALER-D01", "DEALER-D02", "DEALER-D03", "CLIENT-C04"]
   publisher <- getParty "REUTERS"
   let d = HolidayCalendarData with label = "USNY", holidays = [], weekend = [Saturday, Sunday]
   return HolidayCalendarInstance with ..

@@ -22,9 +22,11 @@ template MasterAgreementInstance
   with
     p1  : Party
     p2  : Party
+    -- ccp: Party
   where
     signatory p1, p2
-
+    key (p1, p2): (Party, Party)
+    maintainer key._1
     nonconsuming choice ProposeNewTrade: ContractId EventProposal
       with
         exerciser  : Party
