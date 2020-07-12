@@ -150,7 +150,7 @@
               "quantity" : {
                 "notionalSchedule" : {
                   "notionalStepSchedule" : {
-                    "initialValue" : 200000000.00,
+                    "initialValue" : 400000000.00,
                     "currency" : {"value" : "EUR"}
                   }
                 }
