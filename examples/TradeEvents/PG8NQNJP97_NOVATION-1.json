@@ -1,13 +1,12 @@
 {
   "choice" : "ProposeNovation",
   "argument": {
-    "ps" : [
-      {
-        "p": "CLIENT-C06",
-        "id": "5264151754007"
-      },{
+    "ps" : [{
       "p": "DEALER-D01",
       "id": "3993378688666"
+    },{
+      "p": "CLIENT-C06",
+      "id": "5264151754007"
     },{
       "p": "CCP-P01",
       "id": "9377538274179"
@@ -264,7 +263,7 @@
       "tradeDate" : {
         "date" : "2018-10-01"
       },
-      "rosettaKey" : "5fg50284-1"
+      "rosettaKey" : "5fg50284"
     },
     "contractReference" : "4bff0284"
   }
