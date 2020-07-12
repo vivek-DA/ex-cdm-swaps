@@ -46,13 +46,13 @@
         "contractIdentifier" : [ {
           "issuerReference": {"reference" : "3993378688666"},
           "assignedIdentifier": [{
-            "identifier" : {"value" : "PG8NQNJP97"},
+            "identifier" : {"value" : "QH9OROHO08"},
             "version" : 1
           }]
         }, {
           "issuerReference": {"reference" : "9377538274179"},
           "assignedIdentifier": [{
-            "identifier" : {"value" : "PG8NQNJP97"},
+            "identifier" : {"value" : "QH9OROHO08"},
             "version" : 1
           }]
         } ],
