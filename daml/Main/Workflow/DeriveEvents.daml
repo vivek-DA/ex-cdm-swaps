@@ -53,7 +53,7 @@ template DerivedEvent
       -- ^ The CDM event
   where
     signatory sig
-    observer map (.p) ps
+    observer map p ps
     ensure checkParties ps d.party
 
     controller sig can
