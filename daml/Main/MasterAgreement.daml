@@ -70,7 +70,7 @@ template MasterAgreementInstance
         event <- setEventRosettaKey $ Cdm.buildPartialTerminationEvent spec
         create EventProposal with ps, d = event, sigs = [exerciser]
 
-    nonconsuming choice ProposeNovation: ContractId EventProposal
+    nonconsuming choice ProposeNovation: [ContractId EventProposal]
       with
         exerciser      : Party
         ps          : [PartyWithId]
@@ -81,11 +81,31 @@ template MasterAgreementInstance
       do
         assertMsg "exerciser exists" $ p1 == exerciser || p2 == exerciser
         ci <- fetch ciCid
-        let cn = contractNew!!0
-        let spec = NovationSpec with contract = ci.d, contractNew = cn,..
-        event <- setEventRosettaKey $ Cdm.buildNovationEvent spec
-        create EventProposal with ps, d = event, sigs = [exerciser]
- 
+        -- case length contractNew of 
+        --   2 ->  
+        --     let cn1 = contractNew!!0
+        --     let cn2 = contractNew!!1
+        --     let ps1 = [ps!!0,ps!!2]
+        --     let ps2 = [ps!!1,ps!!2]
+
+        --     let spec1 = NovationSpec with contract = ci.d, contractNew = cn1,..
+        --     event1 <- setEventRosettaKey $ Cdm.buildNovationEvent spec1
+            
+        --     let spec2 = NovationSpec with contract = ci.d, contractNew = cn2,..
+        --     event2 <- setEventRosettaKey $ Cdm.buildNovationEvent spec2
+
+        --     l1<- create EventProposal with ps=ps1, d = event1, sigs = [exerciser]
+        --     l2<- create EventProposal with ps=ps2, d = event1, sigs = [exerciser]
+        --     return [l1,l2]
+        --   1 ->             
+        let cn1 = contractNew!!0
+        let spec1 = NovationSpec with contract = ci.d, contractNew = cn1,..
+        event1 <- setEventRosettaKey $ Cdm.buildNovationEvent spec1
+        
+        l1<- create EventProposal with ps, d = event1, sigs = [exerciser]
+        return [l1]
+
+        
 
     nonconsuming choice ProposePartialNovation: ContractId EventProposal
       with

@@ -83,6 +83,7 @@
                       "unadjustedDate" : "2018-09-26"
                     }
                   },
+                  "firstRegularPeriodStartDate": "2019-03-26",
                   "id" : "floatingCalcPeriodDates",
                   "terminationDate" : {
                     "adjustableDate" : {
@@ -185,6 +186,7 @@
                       "unadjustedDate" : "2018-09-26"
                     }
                   },
+                  "firstRegularPeriodStartDate": "2019-09-26",
                   "id" : "fixedCalcPeriodDates",
                   "terminationDate" : {
                     "adjustableDate" : {

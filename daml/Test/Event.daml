@@ -110,7 +110,7 @@ test_Novation = scenario do
                         version = Some 1
                     ]
                 ]
-  let contractNew = buildCds 20000000.0 (d02_2, c04_4) [(1, "AGEZTVDH")]
+  let contractNew = [buildCds 20000000.0 (d02_2, c04_4) [(1, "AGEZTVDH")]]
 
   -- Execution
   passToDate $ D.date 2019 Sep 30
