@@ -22,14 +22,14 @@ import Test.Utils
 
 test_Inception = scenario do
   -- Setup
-  d03_5 <- d03_5
-  p01_1 <- p01_1
-  let p1 = PartyWithId with p = d03_5.damlParty, id = d03_5.partyId
-  let p2 = PartyWithId with p = p01_1.damlParty, id = p01_1.partyId
+  d01_2 <- d01_2
+  c01_6 <- c01_6
+  let p1 = PartyWithId with p = d01_2.damlParty, id = d01_2.partyId
+  let p2 = PartyWithId with p = c01_6.damlParty, id = c01_6.partyId
   maCid <- createMasterAgreement (p1.p, p2.p)
 
   -- New trade
-  let contract = buildCds 20000000.0 (d03_5, p01_1) [(1, "CAXMKVEHOV"), (1, "CAXMKVEHOV_2")]
+  let contract = buildCds 20000000.0 (d01_2, c01_6) [(1, "CAXMKVEHOV"), (1, "CAXMKVEHOV_2")]
   let after = PostInceptionState with
                 creditLimitInformation = None
                 tradeWarehouseWorkflow = None
@@ -58,33 +58,33 @@ test_Inception = scenario do
   en <- submit p1.p do fetch res.enCid
   return (maCid, res, en)
 
-test_Termination = scenario do
-  -- New Trade
-  (maCid, inceptionResult, inceptionNotification) <- test_Inception
-  let [p1, p2] = inceptionNotification.ps
+-- test_Termination = scenario do
+--   -- New Trade
+--   (maCid, inceptionResult, inceptionNotification) <- test_Inception
+--   let [p1, p2] = inceptionNotification.ps
 
-  -- Termination data
-  let base = emptyBaseEvent with
-              action = ActionEnum_New
-              eventDate = D.date 2019 Sep 25
-              eventIdentifier =
-                [ Identifier with
-                  id = None
-                  issuer = None
-                  issuerReference = None
-                  assignedIdentifier =
-                    [ AssignedIdentifier with
-                        identifier = fieldWithEmptyMeta "Termination"
-                        version = Some 1
-                    ]
-                ]
-  -- Execution
-  passToDate $ D.date 2019 Sep 25
-  epCid <- submit p1.p do exercise maCid ProposeTermination with exerciser = p1.p, ps = [p1, p2], base, ciCid = head inceptionResult.ciCids
-  eiCid <- fromRightS "Unknown error" =<< (submit p2.p do exercise epCid EP.Accept with exerciser = p2.p)
-  submit p1.p do exercise eiCid Lifecycle with exerciser = p1.p, ciCids = inceptionResult.ciCids, ctiCids = []
+--   -- Termination data
+--   let base = emptyBaseEvent with
+--               action = ActionEnum_New
+--               eventDate = D.date 2019 Sep 25
+--               eventIdentifier =
+--                 [ Identifier with
+--                   id = None
+--                   issuer = None
+--                   issuerReference = None
+--                   assignedIdentifier =
+--                     [ AssignedIdentifier with
+--                         identifier = fieldWithEmptyMeta "Termination"
+--                         version = Some 1
+--                     ]
+--                 ]
+--   -- Execution
+--   passToDate $ D.date 2019 Sep 25
+--   epCid <- submit p1.p do exercise maCid ProposeTermination with exerciser = p1.p, ps = [p1, p2], base, ciCid = head inceptionResult.ciCids
+--   eiCid <- fromRightS "Unknown error" =<< (submit p2.p do exercise epCid EP.Accept with exerciser = p2.p)
+--   submit p1.p do exercise eiCid Lifecycle with exerciser = p1.p, ciCids = inceptionResult.ciCids, ctiCids = []
 
-  return ()
+--   return ()
 
 test_Novation = scenario do
   -- New Trade
@@ -92,10 +92,12 @@ test_Novation = scenario do
   let [p1, p2] = inceptionNotification.ps
 
   -- Novation data
-  d02_2 <- d02_2
-  c04_4 <- c04_4
-  let p3 = PartyWithId with p = d02_2.damlParty, id = d02_2.partyId
-  let p4 = PartyWithId with p = c04_4.damlParty, id = c04_4.partyId
+  d01_2 <- d01_2
+  c01_6 <- c01_6
+  p01_1 <- p01_1
+
+  let p3 = PartyWithId with p = p01_1.damlParty, id = p01_1.partyId
+  -- let p4 = PartyWithId with p = c01_6.damlParty, id = c01_6.partyId
   let base = emptyBaseEvent with
               action = ActionEnum_New
               eventDate = D.date 2019 Sep 30
@@ -110,20 +112,20 @@ test_Novation = scenario do
                         version = Some 1
                     ]
                 ]
-  let contractNew = [buildCds 20000000.0 (d02_2, c04_4) [(1, "AGEZTVDH")]]
+  let contractNew = [buildCds 20000000.0 (d01_2, p01_1) [(1, "AGEZTVDH-1")], buildCds 20000000.0 (p01_1, d01_2) [(1, "AGEZTVDH-2")]]
 
   -- Execution
   passToDate $ D.date 2019 Sep 30
   epCid <- submit p1.p do exercise maCid ProposeNovation with exerciser = p1.p, ps = [p1, p2, p3], ciCid = head inceptionResult.ciCids, ..
-  -- let epCid1 = epCid!!0
-  -- let epCid2 = epCid!!1
+  let epCid1 = epCid!!0
+  let epCid2 = epCid!!1
 
   -- -- show p1
-  -- epCid1 <- fromRightS "Unknown error" =<< (submit p3.p do exercise  epCid1 EP.Accept with exerciser = p3.p)
-  -- -- epCid1 <- fromLeftS "Unknown error" =<< (submit p1.p do exercise  epCid1 EP.Accept with exerciser = p1.p)
+  epCid1 <- fromRightS "Unknown error" =<< (submit p3.p do exercise  epCid1 EP.Accept with exerciser = p3.p)
+  -- epCid1 <- fromLeftS "Unknown error" =<< (submit p1.p do exercise  epCid1 EP.Accept with exerciser = p1.p)
 
-  -- epCid2 <- fromLeftS "Unknown error" =<< (submit p3.p do exercise  epCid2 EP.Accept with exerciser = p3.p)
-  -- epCid2 <- fromRightS "Unknown error" =<< (submit p2.p do exercise  epCid2 EP.Accept with exerciser = p2.p)
+  epCid2 <- fromLeftS "Unknown error" =<< (submit p3.p do exercise  epCid2 EP.Accept with exerciser = p3.p)
+  epCid2 <- fromRightS "Unknown error" =<< (submit p2.p do exercise  epCid2 EP.Accept with exerciser = p2.p)
 
   -- -- submit p3.p do exercise epCid1 Lifecycle with exerciser = p3.p, ciCids = inceptionResult.ciCids, ctiCids = []
 

@@ -85,6 +85,7 @@ template MasterAgreementInstance
           [cn1,cn2] ->  do
               let ps1 = [ps!!0,ps!!2]
                   ps2 = [ps!!1,ps!!2]
+                  ccp = ps!!2
                   spec1 = NovationSpec with contract = ci.d, contractNew = cn1,..
                   spec2 = NovationSpec with contract = ci.d, contractNew = cn2,..
 
