@@ -92,8 +92,8 @@ template MasterAgreementInstance
               event1 <- setEventRosettaKey $ Cdm.buildNovationEvent spec1
               event2 <- setEventRosettaKey $ Cdm.buildNovationEvent spec2
 
-              l1<- create EventProposal with ps=ps1, d = event1, sigs = [exerciser]
-              l2<- create EventProposal with ps=ps2, d = event2, sigs = [exerciser]
+              l1<- create EventProposal with ps=ps, d = event1, sigs = [exerciser]
+              l2<- create EventProposal with ps=ps, d = event2, sigs = [exerciser]
               return [l1,l2]
           [cn1] ->   do
             let cn1 = contractNew!!0
