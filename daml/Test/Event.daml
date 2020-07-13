@@ -140,6 +140,9 @@ test_Novation = scenario do
   -- Execution
   passToDate $ D.date 2019 Sep 30
   epCid1 <- submit p1.p do exercise maCid1 ProposeNovation with exerciser = p1.p, ps = [p1, p3, p2], ciCid = head inceptionResult.ciCids, ..
+  let base = [base2]
+  let contractNew = [buildCds 20000000.0 (p01_1,c01_6) [(1, "AGEZTVDH-1")]]
+
   epCid2 <- submit p2.p do exercise maCid2 ProposeNovation with exerciser = p2.p, ps = [p1, p2, p3], ciCid = head inceptionResult.ciCids, ..
 
   let epCid3 = epCid1!!0
@@ -152,9 +155,9 @@ test_Novation = scenario do
   epCid2 <- fromLeftS "Unknown error" =<< (submit p1.p do exercise  epCid4 EP.Accept with exerciser = p1.p)
   epCid2 <- fromRightS "Unknown error" =<< (submit p3.p do exercise  epCid2 EP.Accept with exerciser = p3.p)
 
-  res<-submit p1.p do exercise epCid1 Lifecycle with exerciser = p1.p, ciCids = inceptionResult.ciCids, ctiCids = []
-  let ciCid = [res.ciCids!!0]
-  submit p2.p do exercise epCid2 Lifecycle with exerciser = p2.p, ciCids = ciCid, ctiCids = []
+  res<-submit p3.p do exercise epCid1 Lifecycle with exerciser = p3.p, ciCids = inceptionResult.ciCids, ctiCids = []
+  let ciCid = [res.ciCids!!1]
+  submit p3.p do exercise epCid2 Lifecycle with exerciser = p3.p, ciCids = ciCid, ctiCids = []
 
   -- -- submit p3.p do exercise epCid1 Lifecycle with exerciser = p3.p, ciCids = inceptionResult.ciCids, ctiCids = []
 

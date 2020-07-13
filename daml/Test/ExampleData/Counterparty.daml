@@ -13,30 +13,30 @@ data Counterparty = Counterparty
 
 c01_6 : Scenario Counterparty
 c01_6 = do
-  damlParty <- getParty "CLIENT-C06"
+  damlParty <- getParty "C06"
   return Counterparty with
           damlParty
           partyId = "5264151754007"
           account = "P01547927812"
-          name = "CLIENT-C06"
+          name = "C06"
 
 d01_2 : Scenario Counterparty
 d01_2 = do
-  damlParty <- getParty "DEALER-D02"
+  damlParty <- getParty "D02"
   return Counterparty with
           damlParty
           partyId = "5828082809415"
           account = "D02024214214"
-          name = "DEALER-D02"
+          name = "D02"
 
 p01_1 : Scenario Counterparty
 p01_1 = do
-  damlParty <- getParty "CCP-P01"
+  damlParty <- getParty "P01"
   return Counterparty with
           damlParty
           partyId = "9377538274179"
           account = "D03225622378"
-          name = "CCP-P01"
+          name = "P01"
 
 c04_4 : Scenario Counterparty
 c04_4 = do
