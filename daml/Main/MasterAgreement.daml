@@ -74,20 +74,20 @@ template MasterAgreementInstance
       with
         exerciser      : Party
         ps          : [PartyWithId]
-        base        : BaseEvent
+        base        : [BaseEvent]
         contractNew : [Contract]
         ciCid       : ContractId ContractInstance
       controller exerciser
       do
         assertMsg "exerciser exists" $ p1 == exerciser || p2 == exerciser
         ci <- fetch ciCid
-        case  contractNew of 
+        case  contractNew of
           [cn1,cn2] ->  do
               let ps1 = [ps!!0,ps!!2]
                   ps2 = [ps!!1,ps!!2]
                   ccp = ps!!2
-                  spec1 = NovationSpec with contract = ci.d, contractNew = cn1,..
-                  spec2 = NovationSpec with contract = ci.d, contractNew = cn2,..
+                  spec1 = NovationSpec with contract = ci.d, contractNew = cn1,base=base!!0
+                  spec2 = NovationSpec with contract = ci.d, contractNew = cn2,base=base!!1
 
               event1 <- setEventRosettaKey $ Cdm.buildNovationEvent spec1
               event2 <- setEventRosettaKey $ Cdm.buildNovationEvent spec2
@@ -95,16 +95,16 @@ template MasterAgreementInstance
               l1<- create EventProposal with ps=ps1, d = event1, sigs = [exerciser]
               l2<- create EventProposal with ps=ps2, d = event2, sigs = [exerciser]
               return [l1,l2]
-          [cn1] ->   do          
+          [cn1] ->   do
             let cn1 = contractNew!!0
-                spec1 = NovationSpec with contract = ci.d, contractNew = cn1,..
+                spec1 = NovationSpec with contract = ci.d, contractNew = cn1,base=base!!0
             event1 <- setEventRosettaKey $ Cdm.buildNovationEvent spec1
-            
+
             l1<- create EventProposal with ps, d = event1, sigs = [exerciser]
             return [l1]
           _ -> error "Application Error"
 
-        
+
 
     nonconsuming choice ProposePartialNovation: ContractId EventProposal
       with

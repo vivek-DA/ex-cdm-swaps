@@ -15,7 +15,42 @@
         "id": "9377538274179"
       }
     ],
-    "base": {
+    "base": [
+      {
+        "action" : "New",
+        "effectiveDate" : "2018-09-24",
+        "eventDate" : "2018-09-24",
+        "eventIdentifier" : [{
+          "issuerReference": {"reference" : "UNKNOWN"},
+          "assignedIdentifier": [{
+            "version": 1,
+            "identifier": {"value" : "RUSKRUSTN4"}
+          }]
+        }],
+        "transfer": [ {
+          "rosettaKey": "TBA",
+          "settlementDate": {
+            "unadjustedDate" : "2018-09-24"
+          },
+          "status": "Pending",
+          "cashTransfer": [{
+            "payerReceiver": {
+              "payerPartyReference" : {"reference" : "9377538274179"},
+              "receiverPartyReference" : {"reference" : "5264151754007"}
+            },
+            "amount": {
+              "amount" : 10000,
+              "currency" : {"value" : "EUR"}
+            },
+            "cashflowType": "Fee"
+          }]
+        }],
+        "timestamp" : [{
+          "dateTime": "2018-09-24T21:40:54.328+00:00[UTC]",
+          "qualification": "eventCreationDateTime"
+        }]
+      },
+      {
       "action": "New",
       "effectiveDate": "2018-09-24",
       "eventDate": "2018-09-24",
@@ -48,7 +83,7 @@
                   "reference": "3993378688666"
                 },
                 "receiverPartyReference": {
-                  "reference": "5264151754007"
+                  "reference": "9377538274179"
                 }
               },
               "amount": {
@@ -68,7 +103,7 @@
           "qualification": "eventCreationDateTime"
         }
       ]
-    },
+    }],
     "contractNew": [
       {
         "party": [
