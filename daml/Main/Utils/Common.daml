@@ -42,3 +42,8 @@ fetchAndArchive cid = do
   c <- fetch cid
   archive cid
   return c
+novationfetchAndArchive : Template a => ContractId a -> Update a
+novationfetchAndArchive cid = do
+  c <- fetch cid
+  -- archive cid
+  return c

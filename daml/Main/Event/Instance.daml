@@ -46,6 +46,15 @@ template EventInstance
         assertMsg "party exists" $ any (\p -> p.p == exerciser) ps
         lifecycle this ciCids ctiCids
 
+    choice NovationLifecycle: LifecycleResult
+      with
+        exerciser : Daml.Party
+        ciCids    : [ContractId ContractInstance]
+        ctiCids   : [[ContractId CashTransferInstruction]]
+      controller exerciser
+      do
+        assertMsg "party exists" $ any (\p -> p.p == exerciser) ps
+        novationlifecycle this ciCids ctiCids
 
 data InstructResult = InstructResult with
   eiCid   : ContractId EventInstance
@@ -117,7 +126,70 @@ lifecycle ei ciCids ctiCids= do
       let isLifecycleEvent =
             ei.d.eventQualifier == Some "Reset" ||
             ei.d.eventQualifier == Some "CashTransfer"
+      if (isLifecycleEvent) then do
+        let contractReferences = optional [] (\l -> map getReference l.contractReference) ei.d.lineage
+        assertMsg "expecting only referenced contracts" $ sort contractReferences == sort rosettaKeys
+        mapA
+          (\ci ->
+            create ContractInstance with
+                    ps = ci.ps
+                    lifecycleEventCids = enCid :: ci.lifecycleEventCids
+                    d = ci.d)
+          cis
+      else do
+        let effectedRosettaKeys = optional [] (\ee -> ee.effectedContract) ei.d.eventEffect
+        assertMsg "expecting only effected contracts" $ sort effectedRosettaKeys == sort rosettaKeys
+        let contractsNew = Cdm.getAfterContracts ei.d
+        mapA
+          (\contract -> do
+            let lifecycleEventCids =
+                  optional [] (\ci -> ci.lifecycleEventCids)
+                  $ find (\ci -> ((contract.contractIdentifier!!0).assignedIdentifier!!0).identifier == ((ci.d.contractIdentifier!!0).assignedIdentifier!!0).identifier) cis
+            ps <- mapA (\pd -> findPartyByPartyData pd ei.ps) contract.party
+            create ContractInstance with ps, lifecycleEventCids, d = contract)
+          contractsNew
 
+    settleTransfer : (TransferPrimitive, [ContractId CashTransferInstruction]) -> Update (TransferPrimitive, [ContractId Cash])
+    settleTransfer (transfer, cashTransferInstructionCids) = do
+      -- TODO: check that we are after settlement date
+      assertMsg "securityTransfer not supported yet" $ null transfer.securityTransfer
+      assertMsg "commodityTransfer not supported yet" $ null transfer.commodityTransfer
+
+      assertMsg "status ok" (transfer.status == Some TransferStatusEnum_Instructed)
+      let transferNew = transfer with status = Some TransferStatusEnum_Settled
+
+      assertMsg "number of instructions matches" (List.length transfer.cashTransfer == List.length cashTransferInstructionCids)
+      cashCids <-
+        mapA
+          (\(cashTransfer, cashTransferInstructionCid) -> do
+            cashTransferInstruction <- fetch cashTransferInstructionCid
+            assertMsg "rosettaKey matches" (ei.d.rosettaKey == cashTransferInstruction.d.eventReference)
+            assertMsg "details match" (cashTransfer == cashTransferInstruction.d.cashTransfer)
+            settle cashTransferInstructionCid)
+          (zip transfer.cashTransfer cashTransferInstructionCids)
+
+      return (transferNew, cashCids)
+
+
+novationlifecycle : EventInstance -> [ContractId ContractInstance] -> [[ContractId CashTransferInstruction]] -> Update LifecycleResult
+novationlifecycle ei ciCids ctiCids= do
+  assertOnOrAfterDateMsg "can only lifecycle after effective time" $ fromOptional ei.d.eventDate ei.d.effectiveDate
+
+  (transferNew, cashCids) <- unzip <$> mapA settleTransfer (zip ei.d.primitive.transfer ctiCids)
+  enCid <- create EventNotification with ps = ei.ps, d = ei.d with primitive = ei.d.primitive with transfer = transferNew
+  ciCidsNew <- moveContracts ei enCid ciCids
+
+  return $ LifecycleResult with enCid, ciCids = ciCidsNew, cashCids
+
+  where
+    moveContracts : EventInstance -> ContractId EventNotification -> [ContractId ContractInstance] -> Update [ContractId ContractInstance]
+    moveContracts ei enCid ciCids = do
+      cis <- mapA novationfetchAndArchive ciCids
+      let rosettaKeys = map (\c -> c.d.rosettaKey) cis
+
+      let isLifecycleEvent =
+            ei.d.eventQualifier == Some "Reset" ||
+            ei.d.eventQualifier == Some "CashTransfer"
       if (isLifecycleEvent) then do
         let contractReferences = optional [] (\l -> map getReference l.contractReference) ei.d.lineage
         assertMsg "expecting only referenced contracts" $ sort contractReferences == sort rosettaKeys
