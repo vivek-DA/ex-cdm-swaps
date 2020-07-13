@@ -21,14 +21,14 @@ checkParties parties partyData =
 findPartyDataByReference : ReferenceWithMeta Cdm.Party -> [Cdm.Party] -> Update Cdm.Party
 findPartyDataByReference partyReference partyData =
   let reference = getReference partyReference
-  in fromSomeTry ("party with reference " <> reference <> " not found")
+  in fromSomeTry ("Cdm.Party with reference " <> reference <> " not found")
       $ find (\pd -> Some reference ==  pd.id) partyData
 
 -- | Find party by reference
 findPartyByReference : ReferenceWithMeta Cdm.Party -> [PartyWithId] -> Update PartyWithId
 findPartyByReference partyReference parties =
   let reference = getReference partyReference
-  in fromSomeTry ("party with reference " <> reference <> " not found")
+  in fromSomeTry ("PartyWithId with reference " <> reference <> " not found")
       $ find (\p -> reference ==  p.id) parties
 
 -- | Find party by reference
