@@ -75,13 +75,14 @@ template MasterAgreementInstance
         exerciser      : Party
         ps          : [PartyWithId]
         base        : BaseEvent
-        contractNew : Contract
+        contractNew : [Contract]
         ciCid       : ContractId ContractInstance
       controller exerciser
       do
         assertMsg "exerciser exists" $ p1 == exerciser || p2 == exerciser
         ci <- fetch ciCid
-        let spec = NovationSpec with contract = ci.d, ..
+        let cn = contractNew!!0
+        let spec = NovationSpec with contract = ci.d, contractNew = cn,..
         event <- setEventRosettaKey $ Cdm.buildNovationEvent spec
         create EventProposal with ps, d = event, sigs = [exerciser]
  

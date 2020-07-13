@@ -45,7 +45,7 @@
         "qualification": "eventCreationDateTime"
       }]
     },
-    "contractNew" : {
+    "contractNew" : [{
       "party" : [ {
         "id": "9377538274179",
         "name" : {"value" : "CCP-P01"},
@@ -264,7 +264,7 @@
         "date" : "2018-09-24"
       },
       "rosettaKey" : "5fg50284-1"
-    },
+    }],
     "contractReference" : "4bff0284"
   }
 }
