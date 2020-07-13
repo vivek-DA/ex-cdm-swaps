@@ -34,7 +34,7 @@ findPartyByReference partyReference parties =
 -- | Find party by reference
 findPartyByPartyData : Cdm.Party -> [PartyWithId] -> Update PartyWithId
 findPartyByPartyData partyData parties =
-  fromSomeTry ("party with data " <> show partyData <> " not found")
+  fromSomeTry ("party with data " <> show partyData.id <> " not found in: " <> (show parties))
     $ find (\p -> partyData.id == Some p.id) parties
 
 -- | Find account by reference or party

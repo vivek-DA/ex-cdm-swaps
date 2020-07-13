@@ -127,6 +127,7 @@ class DataLoading(party: String, client: LedgerClient, schema: Schema) {
     maO match {
       case Some(ma) =>
         val cmd = new ExerciseCommand(client.getTemplateId("MasterAgreementInstance"), ma._1, choice, argRecord)
+        logger.debug("Exercising: {}", cmd)
         client.sendCommands(party, List(cmd))
 
       case None =>

@@ -3,10 +3,12 @@
 
 package com.digitalasset.app
 
+import java.io.File
 import java.time.{Instant, LocalDate}
 
 import com.daml.ledger.javaapi.data.{CreateCommand, Party, Record}
 import com.digitalasset.app.integration.MarketSetup
+import com.google.gson.JsonObject
 import com.typesafe.config.ConfigFactory
 
 import scala.collection.JavaConverters._
@@ -130,10 +132,16 @@ object Commands {
   }
 
   def loadEvents(directory: String): Unit = {
-    utils.Json.loadJsons(directory).foreach { json =>
-      val party = json.getAsJsonObject("argument").getAsJsonArray("ps").iterator.next.getAsJsonObject.get("p").getAsString
-      party2dataLoading(party).loadEvent(json)
-    }
+    utils.Json.loadJsons(directory).foreach(loadEventFromJson)
+  }
+
+  def loadEvent(file: String): Unit = {
+    utils.Json.loadJson(new File(file)).foreach(loadEventFromJson)
+  }
+
+  private def loadEventFromJson(json: JsonObject): Unit = {
+    val party = json.getAsJsonObject("argument").getAsJsonArray("ps").iterator.next.getAsJsonObject.get("p").getAsString
+    party2dataLoading(party).loadEvent(json)
   }
 
   def deriveEvents(party: String, contractRosettaKey: String): Unit = {
