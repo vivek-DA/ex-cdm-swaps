@@ -5,8 +5,8 @@
       "p": "DEALER-D01",
       "id": "3993378688666"
     }, {
-      "p": "CLIENT-C01",
-      "id": "3895466770349"
+      "p": "CCP-P01",
+      "id": "5264151754007"
     }],
     "base": {
       "action": "New",
@@ -36,11 +36,11 @@
             "accountNumber" : {"value" : "D01011566365"}
           }
         }, {
-          "id": "3895466770349",
-          "name" : {"value" : "CLIENT-C01"},
-          "partyId" : [ {"value": "3895466770349"} ],
+          "id": "5264151754007",
+          "name" : {"value" : "CCP-P01"},
+          "partyId" : [ {"value": "5264151754007"} ],
           "account" : {
-            "accountNumber" : {"value" : "C01728346828"}
+            "accountNumber" : {"value" : "P01547927812"}
           }
         } ],
         "contractIdentifier" : [ {
@@ -50,7 +50,7 @@
             "version" : 1
           }]
         }, {
-          "issuerReference": {"reference" : "3895466770349"},
+          "issuerReference": {"reference" : "5264151754007"},
           "assignedIdentifier": [{
             "identifier" : {"value" : "PG8NQNJP97"},
             "version" : 1
@@ -112,7 +112,7 @@
                 },
                 "payerReceiver" : {
                   "payerPartyReference" : {"reference" : "3993378688666"},
-                  "receiverPartyReference" : {"reference" : "3895466770349"}
+                  "receiverPartyReference" : {"reference" : "5264151754007"}
                 },
                 "paymentDates" : {
                   "calculationPeriodDatesReference" : {"reference" : "floatingCalcPeriodDates"},
@@ -205,7 +205,7 @@
                   }
                 },
                 "payerReceiver" : {
-                  "payerPartyReference" : {"reference" : "3895466770349"},
+                  "payerPartyReference" : {"reference" : "5264151754007"},
                   "receiverPartyReference" : {"reference" : "3993378688666"}
                 },
                 "paymentDates" : {
@@ -243,7 +243,7 @@
         "tradeDate" : {
           "date" : "2018-09-24"
         },
-        "rosettaKey" : "4bff0284"
+        "rosettaKey" : "4bff0284-1"
       }
     }
   }
