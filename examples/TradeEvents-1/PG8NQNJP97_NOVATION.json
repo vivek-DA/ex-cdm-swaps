@@ -30,8 +30,8 @@
         "status": "Pending",
         "cashTransfer": [{
           "payerReceiver": {
-            "payerPartyReference" : {"reference" : "3993378688666"},
-            "receiverPartyReference" : {"reference" : "3895466770349"}
+            "payerPartyReference" : {"reference" : "3895466770349"},
+            "receiverPartyReference" : {"reference" : "3993378688666"}
           },
           "amount": {
             "amount" : 10000,
@@ -47,18 +47,18 @@
     },
     "contractNew" : {
       "party" : [ {
-        "id": "9377538274179",
-        "name" : {"value" : "DEALER-D03"},
-        "partyId" : [ {"value": "9377538274179"} ],
-        "account" : {
-          "accountNumber" : {"value" : "D03225622378"}
-        }
-      }, {
         "id": "3993378688666",
         "name" : {"value" : "DEALER-D01"},
         "partyId" : [ {"value": "3993378688666"} ],
         "account" : {
           "accountNumber" : {"value" : "D01011566365"}
+        }
+      },{
+        "id": "9377538274179",
+        "name" : {"value" : "DEALER-D03"},
+        "partyId" : [ {"value": "9377538274179"} ],
+        "account" : {
+          "accountNumber" : {"value" : "D03225622378"}
         }
       } ],
       "contractIdentifier" : [ {
@@ -130,8 +130,8 @@
                 }
               },
               "payerReceiver" : {
-                "payerPartyReference" : {"reference" : "3993378688666"},
-                "receiverPartyReference" : {"reference" : "9377538274179"}
+                "payerPartyReference" : {"reference" : "9377538274179"},
+                "receiverPartyReference" : {"reference" : "3993378688666"}
               },
               "paymentDates" : {
                 "calculationPeriodDatesReference" : {"reference" : "floatingCalcPeriodDates"},
@@ -225,8 +225,8 @@
                 }
               },
               "payerReceiver" : {
-                "payerPartyReference" : {"reference" : "9377538274179"},
-                "receiverPartyReference" : {"reference" : "3993378688666"}
+                "payerPartyReference" : {"reference" : "3993378688666"},
+                "receiverPartyReference" : {"reference" : "9377538274179"}
               },
               "paymentDates" : {
                 "calculationPeriodDatesReference" : "fixedCalcPeriodDates",
