@@ -22,14 +22,6 @@ headTry : Text -> [a] -> Update a
 headTry _ (x::_) = return x
 headTry msg [] = abort msg
 
--- | Partition array according to a predicate
-partition : (a -> Bool) -> [a] -> ([a], [a])
-partition p xs = foldr (select p) ([],[]) xs
-  where
-    select : (a -> Bool) -> a -> ([a], [a]) -> ([a], [a])
-    select p x (ts,fs) | p x       = (x::ts,fs)
-                       | otherwise = (ts, x::fs)
-
 -- | Assert if date is on or after a given date
 assertOnOrAfterDateMsg : (CanAbort m, HasTime m) => Text -> Date -> m ()
 assertOnOrAfterDateMsg msg date = do

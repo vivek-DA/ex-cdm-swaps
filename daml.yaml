@@ -1,4 +1,4 @@
-sdk-version: 0.13.34
+sdk-version: 1.2.0
 name: CdmSwaps
 version: 1.0.0
 source: daml/Main.daml
@@ -20,4 +20,4 @@ exposed-modules:
 dependencies:
 - daml-prim
 - daml-stdlib
-lf-version: 1.6
+- daml-script
