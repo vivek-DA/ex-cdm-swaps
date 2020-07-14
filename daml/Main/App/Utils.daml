@@ -1,0 +1,418 @@
+daml 1.2
+
+module Main.App.Utils where
+
+import DA.Date qualified as Date
+import Org.Isda.Cdm.EventSpecificationModule.Types.EventSpec
+import Org.Isda.Cdm.Classes hiding (Party)
+import Org.Isda.Cdm.Enums
+import Org.Isda.Cdm.MetaClasses
+import Org.Isda.Cdm.MetaFields
+import Org.Isda.Cdm.EventSpecificationModule qualified as Cdm hiding (exercise)
+import DA.Optional (fromOptional)
+
+-- | Try to get head from list (fails if empty)
+headTry : Text -> [a] -> Update a
+headTry _ (x::_) = return x
+headTry msg [] = abort msg
+
+-- | Set rosetta key in Event (in the absence of a proper handling it is simply set to the first event identifier)
+setEventRosettaKey : Event -> Update Event
+setEventRosettaKey event = do
+  eventIdentifier <- headTry "expecting at least one eventIdentifier" event.eventIdentifier
+  assignedIdentifier <- headTry "expecting at least one assignedIdentifier" eventIdentifier.assignedIdentifier
+  let rosettaKey = assignedIdentifier.identifier.value <> "_" <> show (fromOptional 0 assignedIdentifier.version)
+  return event with rosettaKey
+
+data Counterparty = Counterparty
+  with
+    damlParty : Party
+    partyId : Text
+    account : Text
+    name : Text
+
+d03_5 : Scenario Counterparty
+d03_5 = do
+  damlParty <- getParty "DEALER-D03"
+  return Counterparty with
+          damlParty
+          partyId = "9377538274179"
+          account = "D03225622378"
+          name = "DEALER-D03"
+
+p01_1 : Scenario Counterparty
+p01_1 = do
+  damlParty <- getParty "CCP-P01"
+  return Counterparty with
+          damlParty
+          partyId = "5264151754007"
+          account = "P01547927812"
+          name = "CCP-P01"
+
+data TestData = TestData {
+  base: BaseEvent,
+  after: PostInceptionState
+}
+
+testData : Scenario TestData
+testData = do
+  -- Setup
+  d03_5 <- d03_5
+  p01_1 <- p01_1
+
+  -- New trade
+  let contract = buildCds 20000000.0 (d03_5, p01_1) [(1, "CAXMKVEHOV"), (1, "CAXMKVEHOV_2")]
+  let after = PostInceptionState with
+                creditLimitInformation = None
+                tradeWarehouseWorkflow = None
+                contract = contract
+  let base = emptyBaseEvent with
+              action = ActionEnum_New
+              eventDate = Date.date 2018 Date.Sep 24
+              eventIdentifier =
+                [ Identifier with
+                    id = None
+                    issuer = None
+                    issuerReference = None
+                    assignedIdentifier =
+                      [ AssignedIdentifier with
+                          identifier = fieldWithEmptyMeta "RTPBD5KA8P"
+                          version = Some 1
+                      ]
+                ]
+  pure TestData {
+    base,
+    after
+  }
+
+emptyBaseEvent : BaseEvent
+emptyBaseEvent = BaseEvent with
+                  id = None
+                  account = []
+                  action = ActionEnum_New
+                  effectiveDate = None
+                  eventDate = Date.date 1970 Date.Jan 1
+                  eventIdentifier = []
+                  messageInformation = None
+                  timestamp = []
+                  transfer = []
+
+fieldWithEmptyMeta : a -> FieldWithMeta a
+fieldWithEmptyMeta v = FieldWithMeta with
+                        value = v
+                        meta = MetaFields with
+                          reference = None
+                          scheme = None
+                          id = None
+
+referenceWithEmptyMeta : Text -> ReferenceWithMeta a
+referenceWithEmptyMeta ref = ReferenceWithMeta
+                              { reference = Some ref
+                              , value = None
+                              , meta = MetaFields
+                                  { reference = None
+                                  , scheme = None
+                                  , id = None
+                                  }
+                              }
+
+getPartyId : Counterparty -> Text
+getPartyId cp = cp.partyId
+
+getPartyData : Counterparty -> Cdm.Party
+getPartyData cp =
+  Cdm.Party with
+    id = Some cp.partyId
+    name = Some $ fieldWithEmptyMeta cp.name
+    account = Some Cdm.Account with
+      id = None
+      accountBeneficiary = None
+      accountName = None
+      servicingParty = None
+      accountNumber = fieldWithEmptyMeta cp.account
+      accountType = None
+    partyId = [fieldWithEmptyMeta cp.partyId]
+    person = []
+
+
+buildCds : Decimal -> (Counterparty, Counterparty) -> [(Int, Text)] -> Contract
+buildCds quantity payerReceiver identifier =
+    Contract with
+      id = None
+      clearedDate = None
+      closedState = None
+      governingLaw = None
+      partyContractInformation = []
+      account = []
+      contractualProduct =
+        ContractualProduct with
+            productTaxonomy = []
+            economicTerms =
+              EconomicTerms with
+                  extendibleProvision = None
+                  cancelableProvision = None
+                  earlyTerminationProvision = None
+                  quantity = []
+                  extraordinaryEvents = None
+                  payout =
+                    Payout with
+                        creditDefaultPayout =
+                          Some
+                            (CreditDefaultPayout with
+                                  id = None
+                                  physicalSettlementTerms = []
+                                  transactedPrice = None
+                                  protectionTerms = [
+                                    ProtectionTerms with
+                                      id = None
+                                      notionalAmount =
+                                        Money with
+                                          id = None
+                                          amount = quantity
+                                          currency = fieldWithEmptyMeta "USD"
+                                      creditEvents = None
+                                      floatingAmountEvents = None
+                                      obligations = None]
+                                  generalTerms =
+                                    GeneralTerms with
+                                        substitution = None
+                                        referenceInformation = None
+                                        basketReferenceInformation =
+                                          None
+                                        indexReferenceInformation =
+                                          Some
+                                            (IndexReferenceInformation with
+                                                id = None
+                                                tranche = None
+                                                indexAnnexSource =
+                                                  None
+                                                excludedReferenceEntity
+                                                  = []
+                                                indexSeries = Some 30
+                                                indexAnnexVersion =
+                                                  None
+                                                indexId = []
+                                                settledEntityMatrix =
+                                                  None
+                                                indexAnnexDate =
+                                                  None
+                                                indexName =
+                                                  Some $ fieldWithEmptyMeta "CDX.NA.IG")
+                                        additionalTerm = []
+                                        dateAdjustments = Some
+                                            (BusinessDayAdjustments with
+                                                id = None
+                                                businessCenters =
+                                                  Some
+                                                    (BusinessCenters with
+                                                        id = None
+                                                        businessCenter
+                                                            =
+                                                            [fieldWithEmptyMeta BusinessCenterEnum_USNY]
+                                                        businessCentersReference
+                                                            = None)
+                                                businessDayConvention =
+                                                  BusinessDayConventionEnum_FOLLOWING)
+                                        modifiedEquityDelivery = None
+                                        buyerSeller =
+                                          BuyerSeller with
+                                              sellerPartyReference =
+                                                (referenceWithEmptyMeta $ getPartyId $ snd payerReceiver)
+                                              buyerAccountReference =
+                                                None
+                                              buyerPartyReference =
+                                                (referenceWithEmptyMeta $ getPartyId $ fst payerReceiver)
+                                              sellerAccountReference =
+                                                None
+                                  rosettaKey = "CDS_Leg"
+                                  cashSettlementTerms = [])
+                        interestRatePayout =
+                          [InterestRatePayout with
+                                id = None
+                                crossCurrencyTerms = None
+                                cashflowRepresentation = None
+                                resetDates = None
+                                paymentDates = None
+                                stubPeriod = None
+                                quantity =
+                                  Some
+                                    (ContractualQuantity with
+                                        notionalAmount = None
+                                        fxLinkedNotional = None
+                                        notionalSchedule =
+                                          Some
+                                            (NotionalSchedule with
+                                                  id = None
+                                                  notionalStepParameters
+                                                    = None
+                                                  notionalStepSchedule =
+                                                    NonNegativeAmountSchedule with
+                                                      id = None
+                                                      initialValue =
+                                                          quantity
+                                                      currency = fieldWithEmptyMeta "USD"
+                                                      step = [])
+                                        quantity = None
+                                        notionalReset = None
+                                        notionalAdjustments = None
+                                        futureValueNotional = None)
+                                calculationPeriodDates =
+                                  CalculationPeriodDates with
+                                      id = None
+                                      firstCompoundingPeriodEndDate =
+                                        None
+                                      calculationPeriodFrequency =
+                                        None
+                                      firstPeriodStartDate = None
+                                      lastRegularPeriodEndDate = None
+                                      effectiveDate = Some
+                                        AdjustableOrRelativeDate with
+                                          id = None
+                                          relativeDate = None
+                                          adjustableDate = Some
+                                            AdjustableDate with
+                                              id = None
+                                              adjustedDate = None
+                                              dateAdjustments = None
+                                              dateAdjustmentsReference = None
+                                              unadjustedDate = Date.date 2018 Date.Sep 25
+                                      calculationPeriodDatesAdjustments =
+                                        None
+                                      stubPeriodType = None
+                                      terminationDate =
+                                        Some
+                                          (AdjustableOrRelativeDate with
+                                            id = None
+                                            adjustableDate = Some
+                                              (AdjustableDate with
+                                                id = None
+                                                unadjustedDate = Date.date 2023 Date.Dec 20
+                                                dateAdjustments = None
+                                                dateAdjustmentsReference = None
+                                                adjustedDate = None)
+                                            relativeDate = None)
+                                      firstRegularPeriodStartDate =
+                                        None
+                                payerReceiver = Some
+                                  PayerReceiver with
+                                      receiverPartyReference =
+                                        (referenceWithEmptyMeta $ getPartyId $ snd payerReceiver)
+                                      payerAccountReference = None
+                                      payerPartyReference =
+                                        (referenceWithEmptyMeta $ getPartyId $ fst payerReceiver)
+                                      receiverAccountReference =
+                                        None
+                                compoundingMethod = None
+                                bondReference = None
+                                rateSpecification =
+                                    RateSpecification with
+                                        inflationRate = None
+                                        floatingRate = None
+                                        fixedRate =
+                                          Some
+                                            (Schedule with
+                                                id = None
+                                                initialValue = 0.01
+                                                step = [])
+                                discountingMethod = None
+                                dayCountFraction =
+                                  Some $ fieldWithEmptyMeta DayCountFractionEnum_ACT_360
+                                rosettaKey = "IRP_Leg"
+                                paymentDate = None
+                                paymentDelay = None
+                                fixedAmount = None
+                                floatingAmount = None
+                         ]
+                        optionPayout = []
+                        equityPayout = []
+                        forwardPayout = []
+                        cashflow =
+                          [Cashflow with
+                                rosettaKey = "436sdhfzu"
+                                id = None
+                                presentValueAmount = None
+                                cashflowDate = None
+                                cashflowCalculation = None
+                                discountFactor = None
+                                cashflowType = None
+                                payerReceiver =
+                                  PayerReceiver with
+                                      receiverPartyReference =
+                                        referenceWithEmptyMeta $ getPartyId $ fst payerReceiver
+                                      payerAccountReference = None
+                                      payerPartyReference =
+                                        referenceWithEmptyMeta $ getPartyId $ snd payerReceiver
+                                      receiverAccountReference =
+                                        None
+                                paymentDiscounting = None
+                                cashflowAmount =
+                                  Money with
+                                      id = None
+                                      amount = 70000.0
+                                      currency = fieldWithEmptyMeta "USD"
+                                premiumExpression = None
+                            ,Cashflow with
+                                rosettaKey = "sagwarg"
+                                id = None
+                                presentValueAmount = None
+                                cashflowDate = None
+                                cashflowCalculation = None
+                                discountFactor = None
+                                cashflowType = None
+                                payerReceiver =
+                                  PayerReceiver with
+                                      receiverPartyReference =
+                                        referenceWithEmptyMeta $ getPartyId $ fst payerReceiver
+                                      payerAccountReference = None
+                                      payerPartyReference =
+                                        referenceWithEmptyMeta $ getPartyId $ snd payerReceiver
+                                      receiverAccountReference =
+                                        None
+                                paymentDiscounting = None
+                                cashflowAmount =
+                                  Money with
+                                      id = None
+                                      amount = 100000.0
+                                      currency = fieldWithEmptyMeta "USD"
+                                premiumExpression = None]
+                  rosettaKeyValue = ""
+            productIdentification =
+              Some
+                (ProductIdentification with
+                      secondaryAssetClass = []
+                      productType = []
+                      primaryAssetClass = Some $ fieldWithEmptyMeta AssetClassEnum_Credit
+                      productQualifier =
+                        Some "Credit_Default_Swap_Index"
+                      productId = [])
+      documentation = None
+      partyRole = []
+      tradeDate =
+        TradeDate with
+          id = None
+          date = Date.date 2018 Date.Sep 24
+      rosettaKey = ""
+      calculationAgent = None
+      collateral = None
+      party = [getPartyData $ fst payerReceiver, getPartyData $ snd payerReceiver]
+      contractIdentifier =
+          [ Identifier with
+              id = None
+              issuerReference = Some $ referenceWithEmptyMeta $ getPartyId $ fst payerReceiver
+              issuer = None
+              assignedIdentifier =
+                map (\(version, idValue) -> AssignedIdentifier with
+                                              version = Some version
+                                              identifier = fieldWithEmptyMeta idValue
+                    ) identifier
+          , Identifier with
+              id = None
+              issuerReference = Some $ referenceWithEmptyMeta $ getPartyId $ snd payerReceiver
+              issuer = None
+              assignedIdentifier =
+                map (\(version, idValue) -> AssignedIdentifier with
+                                              version = Some version
+                                              identifier = fieldWithEmptyMeta idValue
+                    ) identifier
+          ]
+

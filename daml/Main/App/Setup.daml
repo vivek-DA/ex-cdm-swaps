@@ -1,0 +1,47 @@
+-- Copyright (c) 2020 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+
+daml 1.2
+
+module Main.App.Setup where
+
+import Main.App.Roles
+
+initialize = do
+  lch <- getParty "LCH"
+  cme <- getParty "CME"
+  ice <- getParty "ICE"
+
+  ops <- getParty "LCH-OPS"
+  cm1 <- getParty "CM1"
+  cm2 <- getParty "CM2"
+  client1 <- getParty "Client1"
+  swapsClear <- getParty "Client1"
+
+
+  opsRole <- submit ops do
+    create OperatorRole with
+      ops
+
+  ccpInviteLCH <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = lch
+  ccpLCH <- submit lch do
+    exercise ccpInviteLCH Accept_CCPRole
+
+  ccpInviteICE <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = ice
+  ccpICE <- submit ice do
+    exercise ccpInviteICE Accept_CCPRole
+
+  ccpInviteCME <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = cme
+  ccpCME <- submit cme do
+    exercise ccpInviteCME Accept_CCPRole
+
+  cm1RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = cm1
+
+
+
+  pure ()

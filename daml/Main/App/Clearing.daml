@@ -1,0 +1,85 @@
+daml 1.2
+
+module Main.App.Clearing where
+
+import DA.List
+
+import Org.Isda.Cdm.Classes (Event)
+
+type Cdm = Text
+
+template AllegedTrade
+  with
+    swapDetails: Cdm
+
+    sef: Party -- Swap execution facilty
+    client: Party
+    clearer: Party
+    broker: Party
+    clearingService: Party -- e.g. SwapsClear
+    ccp: Party
+    affirmedBy: [Party]
+    event: Event
+  where
+    signatory affirmedBy
+    observer client, clearer, broker, ccp
+    ensure
+          (sef `elem` affirmedBy || client `elem` affirmedBy )
+      &&  unique affirmedBy
+
+    choice Affirm: ContractId AllegedTrade
+        with
+          party: Party
+      controller party
+        do
+          assertMsg"Already Signed!"$ party `notElem` affirmedBy
+          assertMsg"Who dis"$ party `elem` [client, clearer, broker, sef]
+
+          create this with affirmedBy = party :: affirmedBy
+
+    controller sef can
+      Finalize: ContractId AffirmedTrade
+        with
+          gtr: Party
+        do
+          assertMsg"Not everybody signed yet!"
+            $ all (`elem` affirmedBy) [client, clearer, broker]
+          assertMsg"Didn't pass eligibility check, yo"$ True -- Replace True here
+          create AffirmedTrade with ..
+
+template AffirmedTrade
+  with
+    swapDetails: Cdm
+
+    sef: Party -- Swap execution facilty
+    client: Party
+    clearer: Party
+    broker: Party
+    ccp: Party
+
+    gtr: Party -- Trade repository, e.g. DTCC
+
+  where
+    signatory sef, client, clearer, broker
+    observer ccp, gtr
+
+    controller ccp can -- via a clearing service such as SwapsWire
+      Clear: ContractId ClearedTrade
+        do
+          assertMsg"Another check here"$ True
+          create ClearedTrade with ..
+
+template ClearedTrade
+  with
+    swapDetails: Cdm
+
+    sef: Party -- Swap execution facilty
+    client: Party
+    clearer: Party
+    broker: Party
+    ccp: Party
+
+    gtr: Party -- Trade repository, e.g. DTCC
+  where
+    signatory sef, client, clearer, broker, ccp
+    observer gtr, ccp

@@ -1,0 +1,378 @@
+daml 1.2
+
+module Main.App.Roles where
+
+import Main.App.Clearing
+
+import Org.Isda.Cdm.EventSpecificationModule.Types.EventSpec (BaseEvent)
+import Org.Isda.Cdm.Classes (Account, PostInceptionState)
+import Org.Isda.Cdm.EventSpecificationModule qualified as Cdm hiding (exercise)
+import Main.App.Utils
+
+data AccountType = Client|House
+  deriving (Eq, Show)
+data AccountStatus = Pending|Active|Disabled
+  deriving (Eq, Show)
+
+data AgreementType = ISDA|CloseOut
+  deriving (Eq, Show)
+
+data Jurisdiction  = NY|Lon
+  deriving (Eq, Show)
+
+data Currency = GBP|USD
+  deriving (Eq, Show)
+
+data AccountInfo = AccountInfo
+  with
+    accountName: Text
+    accountType: AccountType
+    accountLEI: Text
+    agreementId: Text
+    agreementType: AgreementType
+    agreementStart: Date
+    agreementEnd: Date
+    governingLaw: Jurisdiction
+    initialMarginAccount: Text
+    variationMarginAccount: Text
+      deriving (Eq, Show)
+
+template ClientAccount
+  with
+    account : Account
+    client: Party
+    clearingMember: Party
+    currency: Currency
+    ccp: Party
+    status: AccountStatus
+  where
+    signatory client, clearingMember, ccp
+    controller client can
+      nonconsuming ProposeTrade : ContractId AllegedTrade
+        with
+          sef: Party
+          dealer: Party
+          clearingService: Party
+          base: BaseEvent
+          after: PostInceptionState
+        do
+          let spec = Cdm.NewTradeSpec with base, after
+          event <- setEventRosettaKey $ Cdm.buildNewTradeEvent spec
+          create AllegedTrade with
+            sef
+            client
+            clearer = clearingMember
+            broker = dealer
+            clearingService
+            ccp
+            affirmedBy = [client]
+            swapDetails = " Blah"
+            event
+
+    controller ccp can
+      CCP_Approve_ClientAccount : ContractId ClientAccount
+        do
+          assert(status == Pending)
+          create this with status = Active
+      CCP_Disable_ClientAccount : ContractId ClientAccount
+        do
+          assert(status == Active)
+          create this with status = Disabled
+
+    controller clearingMember can
+      CM_Disable_ClientAccount : ContractId ClientAccount
+        do
+          assert(status == Active)
+          create this with status = Disabled
+
+template HouseAccount
+  with
+    accountInfo : AccountInfo
+    clearingMember: Party
+    defaultAccount : Text
+    ccp: Party
+    status: AccountStatus
+  where
+  signatory clearingMember, ccp
+  controller ccp can
+    CCP_Approve_HouseAccount : ContractId HouseAccount
+      do
+        assert(status == Pending)
+        create this with status = Active
+    CCP_Disable_HouseAccount : ContractId HouseAccount
+      do
+        assert(status == Active)
+        create this with status = Disabled
+
+
+template OperatorRole
+  with
+    ops : Party
+  where
+    signatory ops
+    controller ops can
+      nonconsuming InviteForCCPRole : ContractId CCPRoleInvite
+        with ccp : Party
+        do
+          create CCPRoleInvite with ..
+
+
+template CCPRoleInvite
+  with
+    ops : Party
+    ccp: Party
+  where
+    signatory ops
+    controller ccp can
+      Accept_CCPRole : ContractId CCPRole
+        do
+          create CCPRole with ..
+
+
+template CCPRole
+  with
+    ops : Party
+    ccp: Party
+  where
+    signatory ops, ccp
+
+    controller ccp can
+      nonconsuming InviteForClearingMemberRole : ContractId ClearingMemberRoleInvite
+        with clearingMember : Party
+        do
+          create ClearingMemberRoleInvite with ..
+
+      nonconsuming InviteForExecutingDealerRole : ContractId ExecutingDealerRoleInvite
+        with executingDealer : Party
+        do
+          create ExecutingDealerRoleInvite with ..
+
+      nonconsuming InviteForClearingServiceRole : ContractId ClearingServiceRoleInvite
+        with clearingService : Party
+        do
+          create ClearingServiceRoleInvite with ..
+
+template ClearingMemberRoleInvite
+  with
+    ccp : Party
+    clearingMember: Party
+  where
+    signatory ccp
+    controller clearingMember can
+      Accept_ClearingMemberRole : ContractId ClearingMemberRole
+        do
+          create ClearingMemberRole  with ..
+
+
+
+
+template ClearingMemberRole
+  with
+    ccp : Party
+    clearingMember: Party
+  where
+    signatory ccp, clearingMember
+
+    controller clearingMember can
+      nonconsuming InviteForClientRole : ContractId ClientRoleInvite
+        with client : Party
+        do
+          create ClientRoleInvite with ..
+
+
+
+template ClientRoleInvite
+  with
+    clearingMember : Party
+    client: Party
+    ccp: Party
+  where
+    signatory clearingMember, ccp
+    controller client can
+      Accept_ClientRole : ContractId ClientRole
+        do
+          create ClientRole with ..
+
+
+
+template ClientRole
+  with
+    clearingMember : Party
+    client: Party
+    ccp: Party
+  where
+    signatory clearingMember, client, ccp
+
+    controller client can
+      nonconsuming RequestClientAccount : ContractId ClientAccount
+        with
+          account : Account
+          currency: Currency
+        do
+
+          create ClientAccount with status = Pending, ..
+
+
+
+template ExecutingDealerRoleInvite
+  with
+    ccp : Party
+    executingDealer: Party
+  where
+    signatory ccp
+
+    controller executingDealer can
+      Accept_ExecutingDealerRole : ContractId ExecutingDealerRole
+        do
+          create ExecutingDealerRole with ..
+
+
+
+template ExecutingDealerRole
+  with
+    ccp : Party
+    executingDealer: Party
+  where
+    signatory ccp, executingDealer
+
+
+template ClearingServiceRole
+  with
+    ccp : Party
+    clearingService: Party
+  where
+    signatory ccp, clearingService
+
+
+template ClearingServiceRoleInvite
+  with
+    ccp : Party
+    clearingService: Party
+  where
+    signatory ccp
+
+    controller clearingService can
+      Accept_ClearingServiceRole : ContractId ClearingServiceRole
+        do
+          create ClearingServiceRole with ..
+
+
+
+
+
+
+test : Scenario ()
+test = scenario do
+
+  lch <- getParty "LCH"
+  cme <-  getParty "CME"
+  ice <- getParty "ICE"
+  ops <- getParty "LCH-OPS"
+  cm1 <- getParty "CM1"
+  cm2 <- getParty "CM2"
+  client1 <- getParty "Client1"
+  sef <- getParty "SEF"
+  swapsClear <- getParty "SwapsClear"
+
+  dtcc <- getParty "DTCC GTR"
+
+
+  opsRole <- submit ops do
+    create OperatorRole with
+      ops
+
+  ccpInviteLCH <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = lch
+  ccpLCH <- submit lch do
+    exercise ccpInviteLCH Accept_CCPRole
+
+  ccpInviteICE <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = ice
+  ccpICE <- submit ice do
+    exercise ccpInviteICE Accept_CCPRole
+
+  ccpInviteCME <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = cme
+  ccpCME <- submit cme do
+    exercise ccpInviteCME Accept_CCPRole
+
+  cm1RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = cm1
+
+  cm1Role <-  submit cm1 do
+    exercise cm1RoleInvite Accept_ClearingMemberRole
+
+  cm2RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = cm2
+
+  cm2Role <-  submit cm2 do
+    exercise cm2RoleInvite Accept_ClearingMemberRole
+
+  client1RoleInvite <-  submit cm1 do
+    exercise cm1Role InviteForClientRole with client = client1
+
+  client1Role <-  submit client1 do
+    exercise client1RoleInvite Accept_ClientRole
+
+
+
+
+  cs1RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingServiceRole with clearingService = sef
+
+  cs1Role <-  submit sef do
+    exercise cs1RoleInvite Accept_ClearingServiceRole
+
+
+  -- TODO: Confirm Accound creation.
+  let cAcc = Cdm.Account with
+        accountName = Some (fieldWithEmptyMeta "Fund1")
+        accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_Client)
+        accountNumber = fieldWithEmptyMeta "123" -- LEI?
+        accountBeneficiary = None
+        servicingParty = None
+        id = None
+        -- What about these properties?
+        -- agreementId= "ISDA-CM1-Client1"
+        -- agreementType = ISDA
+        -- agreementStart= date 2020 Jan 01
+        -- agreementEnd= date 2025 Jan 01
+        -- governingLaw= NY
+        -- initialMarginAccount= "ABC"
+        -- variationMarginAccount= "XYZ"
+
+  clientAccountPend<- submit client1 do
+    exercise client1Role RequestClientAccount with
+      account = cAcc
+      currency = GBP
+  clientAccount<- submit lch do
+    exercise clientAccountPend CCP_Approve_ClientAccount
+
+  testData <- testData
+  allegedOrder<- submit client1 do
+    exercise clientAccount ProposeTrade with
+      sef
+      dealer = cm2
+      clearingService = swapsClear
+      base = testData.base
+      after = testData.after
+
+
+  allegedOrder<- submit sef do
+    exercise allegedOrder Affirm with party=sef
+
+  allegedOrder<- submit cm2 do
+    exercise allegedOrder Affirm with party=cm2
+
+
+  allegedOrder<- submit cm1 do
+    exercise allegedOrder Affirm with party=cm1
+
+  affirmedOrder<- submit sef do
+    exercise allegedOrder Finalize with gtr= dtcc
+
+  clearedTrade <- submit lch do
+    exercise affirmedOrder Clear
+
+
+  return ()
