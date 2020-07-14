@@ -36,11 +36,17 @@ class DerivedEvents(party: String, ledgerClient: LedgerClient) extends Bot(party
       contractIdt2eds.flatMap{
         case (contractIdt, edsGrouped) if !ciCid2contractIdt.values.toList.contains(contractIdt) =>
           logger.info("Cleaning up result ...")
-          edsGrouped.map(ed => new ExerciseCommand(edTid, ed._1, "Archive", Cdm.archiveArg))
-
+          edsGrouped.collect {
+            case (contractId, derivedEvent) if belongsToParty(derivedEvent) =>
+              new ExerciseCommand(edTid, contractId, "Archive", Cdm.archiveArg)
+          }
         case _ => List()
       }.toList
 
     cmds
+  }
+
+  private def belongsToParty(derivedEvent: Record) = {
+    party == derivedEvent.get[Party]("sig").getValue
   }
 }
