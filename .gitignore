@@ -15,3 +15,4 @@ lib/
 logs/
 navigator.history
 sqlite/
+target

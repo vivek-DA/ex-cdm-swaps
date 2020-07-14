@@ -5,24 +5,27 @@ package com.digitalasset.app
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
-import java.util.{Optional, UUID}
+import java.util.UUID
 
 import com.daml.ledger.rxjava.components.{Bot, LedgerViewFlowable}
 import com.daml.ledger.rxjava.DamlLedgerClient
 import com.daml.ledger.rxjava.components.helpers.CommandsAndPendingSet
 import com.daml.ledger.javaapi.data.{Command, Event, FiltersByParty, Identifier, LedgerOffset, Record, Transaction}
-import com.digitalasset.daml_lf.DamlLf
-import com.digitalasset.daml_lf.DamlLf1
-import com.digitalasset.daml_lf.DamlLf1.DottedName
-import com.digitalasset.ledger.api.v1.PackageServiceOuterClass.{GetPackageRequest, ListPackagesRequest}
+import com.daml.daml_lf_dev.DamlLf
+import com.daml.daml_lf_dev.DamlLf1
+import com.daml.daml_lf_dev.DamlLf1.{DottedName, FieldWithType}
+import com.daml.daml_lf_dev.DamlLf1.FieldWithType.FieldCase.FIELD_INTERNED_STR
+import com.daml.daml_lf_dev.DamlLf1.KeyExpr.RecordField.FieldCase
+import com.daml.ledger.api.v1.PackageServiceOuterClass.{GetPackageRequest, ListPackagesRequest}
 import com.google.protobuf.{CodedInputStream, Timestamp}
 import io.grpc.ManagedChannelBuilder
-import com.digitalasset.ledger.api.v1.PackageServiceGrpc
+import com.daml.ledger.api.v1.PackageServiceGrpc
 import io.reactivex.Flowable
 
 import scala.collection.JavaConverters._
-import com.digitalasset.ledger.api.v1.testing.TimeServiceGrpc
-import com.digitalasset.ledger.api.v1.testing.TimeServiceOuterClass.{GetTimeRequest, SetTimeRequest}
+import com.daml.ledger.api.v1.testing.TimeServiceGrpc
+import com.daml.ledger.api.v1.testing.TimeServiceOuterClass.{GetTimeRequest, SetTimeRequest}
+import com.digitalasset.app.utils.PackageUtils
 
 case class Config
   (
@@ -34,7 +37,7 @@ case class Config
   )
 
 class LedgerClient(config: Config) {
-  private val client = DamlLedgerClient.forHostWithLedgerIdDiscovery(config.hostIp, config.hostPort, Optional.empty())
+  private val client = DamlLedgerClient.newBuilder(config.hostIp, config.hostPort).build()
   client.connect()
   private val templateName2id = loadTemplates()
 
@@ -85,15 +88,11 @@ class LedgerClient(config: Config) {
 
   // Send a list of commands
   def sendCommands(party: String, commands: List[Command]): Unit = {
-    val currentTime = getTime()
-    val maxRecordTime = currentTime.plusSeconds(30)
     client.getCommandClient.submitAndWait(
       UUID.randomUUID().toString,
       config.appId,
       UUID.randomUUID().toString,
       party,
-      currentTime,
-      maxRecordTime,
       commands.asJava
     )
     ()
@@ -101,15 +100,11 @@ class LedgerClient(config: Config) {
 
   // Send a list of commands and wait for transaction
   def sendCommandsAndWaitForTransaction(party: String, commands: List[Command]): Transaction = {
-    val currentTime = getTime()
-    val maxRecordTime = currentTime.plusSeconds(30)
     client.getCommandClient.submitAndWaitForTransaction(
       UUID.randomUUID().toString,
       config.appId,
       UUID.randomUUID().toString,
       party,
-      currentTime,
-      maxRecordTime,
       commands.asJava
     ).blockingGet()
   }
@@ -120,7 +115,7 @@ class LedgerClient(config: Config) {
       run(ledgerView)
     }
 
-    Bot.wire(config.appId, client, transactionFilter, runImpl, x => x.getCreateArguments)
+    Bot.wire(config.appId, client, transactionFilter, x => runImpl(x), x => x.getCreateArguments)
   }
 
   def buildInMemoryDataStore(transactionFilter: FiltersByParty, update: Event => Unit) = {
@@ -147,9 +142,11 @@ class LedgerClient(config: Config) {
         lfPackage
           .getModulesList.asScala
           .flatMap(m => {
-            val moduleName = m.getName.getSegmentsList.asScala.reduce((l, r) => l + "." + r)
+            val dottedModuleName = PackageUtils.getModuleName(m, lfPackage)
+            val moduleName = Schema.getSegmentName(dottedModuleName)
             m.getTemplatesList.asScala.map(t => {
-              val templateName = t.getTycon.getSegments(0)
+              val dottedTemplateName = PackageUtils.getDefTemplateName(t, lfPackage)
+              val templateName = Schema.getSegmentName(dottedTemplateName)
               (templateName, new Identifier(packageId, moduleName, templateName))
             })
           })
@@ -222,20 +219,26 @@ object Schema {
 
   // Map daml lf types to a simple schema (required to decode jsons)
   def buildSchema(moduleName: String, lfPackage: DamlLf1.Package): Option[Schema] = {
-    val module = lfPackage.getModulesList.asScala.toList.find(x => getSegmentName(x.getName) == moduleName)
+    val module = lfPackage.getModulesList.asScala.toList.find(x => {
+      val dottedModuleName = PackageUtils.getModuleName(x, lfPackage)
+      getSegmentName(dottedModuleName) == moduleName
+    })
     module.map { m =>
       m.getDataTypesList.asScala.toList.map{dataType =>
-        val name = getSegmentName(dataType.getName)
-        val fields = dataType.getRecord.getFieldsList.asScala.toList.map(f => mapType(f.getField, f.getType))
+        val dataTypeName = PackageUtils.getDataTypeName(dataType, lfPackage)
+        val name = getSegmentName(dataTypeName)
+        val fields = dataType.getRecord.getFieldsList.asScala.toList.map(f => mapType(f, f.getType, lfPackage))
         (name, fields)
       }.toMap
     }
   }
 
-  private def mapType(name: String, damlLfType: DamlLf1.Type): Schema.Field = {
+  private def mapType(field: FieldWithType, damlLfType: DamlLf1.Type, lfPackage: DamlLf1.Package): Schema.Field = {
+    val name = fieldName(field, lfPackage)
     damlLfType.getPrim.getPrim.getValueDescriptor.getName match {
       case "INT64"        => Schema.Field(name, Cardinality.ONEOF, "PrimInt64", false, false)
       case "DECIMAL"      => Schema.Field(name, Cardinality.ONEOF, "PrimDecimal", false, false)
+      case "NUMERIC"      => Schema.Field(name, Cardinality.ONEOF, "PrimNumeric", false, false)
       case "TEXT"         => Schema.Field(name, Cardinality.ONEOF, "PrimText", false, false)
       case "BOOL"         => Schema.Field(name, Cardinality.ONEOF, "PrimBool", false, false)
       case "DATE"         => Schema.Field(name, Cardinality.ONEOF, "PrimDate", false, false)
@@ -244,38 +247,46 @@ object Schema {
       case "CONTRACT_ID"  => Schema.Field(name, Cardinality.ONEOF, "PrimContractId", false, false)
       case "ARROW"        => Schema.Field(name, Cardinality.ONEOF, "PrimArrow", false, false)
       case "OPTIONAL"     =>
-        val subType = mapType(name, damlLfType.getPrim.getArgsList.get(0))
+        val subType = mapType(field, damlLfType.getPrim.getArgsList.get(0), lfPackage)
         if (subType.cardinality == Cardinality.ONEOF) subType.copy(cardinality = Cardinality.OPTIONAL)
         else throw new NotImplementedError("Nested optionals or lists not supported.")
       case "LIST"         =>
-        val subType = mapType(name, damlLfType.getPrim.getArgsList.get(0))
+        val subType = mapType(field, damlLfType.getPrim.getArgsList.get(0), lfPackage)
         if (subType.cardinality == Cardinality.ONEOF) subType.copy(cardinality = Cardinality.LISTOF)
         else throw new NotImplementedError("Nested optionals or lists not supported.")
       case "UNIT"         =>
+        val typeConDottedName = PackageUtils.getTypeConName(damlLfType.getCon.getTycon, lfPackage)
         if (damlLfType.getCon.getArgsCount > 0) {
-          val t = getSegmentName(damlLfType.getCon.getTycon.getName)
+          val t = getSegmentName(typeConDottedName)
           t match {
             case "ReferenceWithMeta" =>
-              val subType = mapType(name, damlLfType.getCon.getArgs(0))
+              val subType = mapType(field, damlLfType.getCon.getArgs(0), lfPackage)
               if (subType.cardinality == Cardinality.ONEOF) subType.copy(withReference = true)
               else throw new NotImplementedError("Nested FieldWithMeta types not supported.")
             case "BasicReferenceWithMeta" =>
-              val subType = mapType(name, damlLfType.getCon.getArgs(0))
+              val subType = mapType(field, damlLfType.getCon.getArgs(0), lfPackage)
               if (subType.cardinality == Cardinality.ONEOF) subType.copy(withReference = true)
               else throw new NotImplementedError("Nested FieldWithMeta types not supported.")
             case "FieldWithMeta" =>
-              val subType = mapType(name, damlLfType.getCon.getArgs(0))
+              val subType = mapType(field, damlLfType.getCon.getArgs(0), lfPackage)
               if (subType.cardinality == Cardinality.ONEOF) subType.copy(withMeta = true)
               else throw new NotImplementedError("Nested FieldWithMeta types not supported.")
             case _ => throw new NotImplementedError("Types with arguments not supported.")
           }
         }
-        else Schema.Field(name, Cardinality.ONEOF, getSegmentName(damlLfType.getCon.getTycon.getName), false, false)
+        else Schema.Field(name, Cardinality.ONEOF, getSegmentName(typeConDottedName), false, false)
       case other          => throw new Exception("PrimType " + other + " not supported.")
     }
   }
 
-  private def getSegmentName(name: DottedName): String = {
+  private def fieldName(f: DamlLf1.FieldWithType, lfPackage: DamlLf1.Package): String = {
+    f.getFieldCase match {
+      case FIELD_INTERNED_STR => lfPackage.getInternedStrings(f.getFieldInternedStr)
+      case _ => f.getFieldStr
+    }
+  }
+
+  def getSegmentName(name: DottedName): String = {
     val segments = 1 to name.getSegmentsCount map(i => name.getSegments(i-1))
     segments.mkString(".")
   }

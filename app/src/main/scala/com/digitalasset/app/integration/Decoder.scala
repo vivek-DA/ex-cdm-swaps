@@ -90,6 +90,7 @@ class Decoder(schema: Schema.Schema) {
     typ match {
       case "PrimInt64" => new Int64(element.getAsInt)
       case "PrimDecimal" => new Decimal(element.getAsBigDecimal)
+      case "PrimNumeric" => new Numeric(element.getAsBigDecimal)
       case "PrimText" => new Text(element.getAsString)
       case "PrimBool" => new Bool(element.getAsBoolean)
       case "PrimDate" =>

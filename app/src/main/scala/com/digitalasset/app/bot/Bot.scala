@@ -3,7 +3,7 @@
 
 package com.digitalasset.app.bot
 
-import java.util.{Collections, UUID}
+import java.util.{Collections, Optional, UUID}
 
 import com.daml.ledger.rxjava.components.LedgerViewFlowable
 import com.daml.ledger.rxjava.components.helpers.CommandsAndPendingSet
@@ -45,15 +45,15 @@ abstract class Bot(party: String, ledgerClient: LedgerClient) {
 
   private def createCommandsAndPendingSet(commands: List[Command]): CommandsAndPendingSet = {
     val cId = UUID.randomUUID().toString
-    val currentTime = ledgerClient.getTime()
     val cmds =
       new SubmitCommandsRequest(
         UUID.randomUUID().toString,
         ledgerClient.appId,
         cId,
         party,
-        currentTime,
-        currentTime.plusSeconds(ledgerClient.maxRecordOffset.longValue),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
         commands.asJava
       )
 
