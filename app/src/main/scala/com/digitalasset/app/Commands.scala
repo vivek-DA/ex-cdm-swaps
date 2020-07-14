@@ -56,6 +56,14 @@ object Commands {
     client.getTime()
   }
 
+  def setTime(time: String): Unit = {
+    val currentTime = getTime()
+    val newTime = Instant.parse(time)
+    require(currentTime.isBefore(newTime), s"Can only advance time, i.e.: $currentTime < $newTime shall be true.")
+
+    client.setTime(newTime)
+  }
+
   // Data loading
   def initMarket(directory: String, time: String = ""): Unit = {
     if (time != "") client.setTime(Instant.parse(time))
