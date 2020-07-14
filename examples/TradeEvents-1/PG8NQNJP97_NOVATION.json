@@ -2,11 +2,11 @@
   "choice" : "ProposeNovation",
   "argument": {
     "ps" : [{
-      "p": "DEALER-D01",
-      "id": "3993378688666"
-    },{
       "p": "CLIENT-C01",
       "id": "3895466770349"
+    },{
+      "p": "DEALER-D01",
+      "id": "3993378688666"
     },{
       "p": "DEALER-D03",
       "id": "9377538274179"
@@ -54,11 +54,11 @@
           "accountNumber" : {"value" : "D03225622378"}
         }
       }, {
-        "id": "3895466770349",
-        "name" : {"value" : "CLIENT-C01"},
-        "partyId" : [ {"value": "3895466770349"} ],
+        "id": "3993378688666",
+        "name" : {"value" : "DEALER-D01"},
+        "partyId" : [ {"value": "3993378688666"} ],
         "account" : {
-          "accountNumber" : {"value" : "C01728346828"}
+          "accountNumber" : {"value" : "D01011566365"}
         }
       } ],
       "contractIdentifier" : [ {
@@ -68,7 +68,7 @@
           "version" : 1
         }]
       }, {
-        "issuerReference": {"reference" : "3895466770349"},
+        "issuerReference": {"reference" : "3993378688666"},
         "assignedIdentifier": [{
           "identifier" : {"value" : "GQ3ABGHD98"},
           "version" : 1
@@ -130,8 +130,8 @@
                 }
               },
               "payerReceiver" : {
-                "payerPartyReference" : {"reference" : "9377538274179"},
-                "receiverPartyReference" : {"reference" : "3895466770349"}
+                "payerPartyReference" : {"reference" : "3993378688666"},
+                "receiverPartyReference" : {"reference" : "9377538274179"}
               },
               "paymentDates" : {
                 "calculationPeriodDatesReference" : {"reference" : "floatingCalcPeriodDates"},
@@ -150,7 +150,7 @@
               "quantity" : {
                 "notionalSchedule" : {
                   "notionalStepSchedule" : {
-                    "initialValue" : 200000000.00,
+                    "initialValue" : 400000000.00,
                     "currency" : {"value" : "EUR"}
                   }
                 }
@@ -225,8 +225,8 @@
                 }
               },
               "payerReceiver" : {
-                "payerPartyReference" : {"reference" : "3895466770349"},
-                "receiverPartyReference" : {"reference" : "9377538274179"}
+                "payerPartyReference" : {"reference" : "9377538274179"},
+                "receiverPartyReference" : {"reference" : "3993378688666"}
               },
               "paymentDates" : {
                 "calculationPeriodDatesReference" : "fixedCalcPeriodDates",
@@ -245,7 +245,7 @@
               "quantity" : {
                 "notionalSchedule" : {
                   "notionalStepSchedule" : {
-                    "initialValue" : 200000000.00,
+                    "initialValue" : 400000000.00,
                     "currency" : {"value" : "EUR"}
                   }
                 }
