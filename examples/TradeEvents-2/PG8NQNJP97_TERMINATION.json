@@ -23,7 +23,7 @@
         "cashTransfer": [{
           "payerReceiver": {
             "payerPartyReference" : {"reference" : "3993378688666"},
-            "receiverPartyReference" : {"reference" : "3895466770349"}
+            "receiverPartyReference" : {"reference" : "9377538274179"}
           },
           "amount": {
             "amount": 10000,
