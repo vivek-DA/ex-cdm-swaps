@@ -62,13 +62,13 @@ test = scenario do
 
 
   cm1RoleInvite <- submit lch do
-    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d01
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d01, clearingService= swapsClear
 
   cm1Role <-  submit d01 do
     exercise cm1RoleInvite Accept_ClearingMemberRole
 
   cm2RoleInvite <- submit lch do
-    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d03
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d03, clearingService= swapsClear
 
   cm2Role <-  submit d03 do
     exercise cm2RoleInvite Accept_ClearingMemberRole
