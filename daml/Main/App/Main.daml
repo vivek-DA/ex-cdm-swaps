@@ -11,9 +11,6 @@ import Main.App.Utils
 import Org.Isda.Cdm.Classes hiding (Party, exercise)
 import DA.Optional
 import Main.Types
-import Main.Event.Proposal as EP
-import Test.Utils hiding (fieldWithEmptyMeta, emptyBaseEvent)
-import Main.Event.Instance
 import Main.App.Roles
 import DA.Date as D
 
@@ -30,7 +27,7 @@ test = scenario do
   sef <- getParty "SEF"
   swapsClear <- getParty "SwapsClear"
   dtcc <- getParty "DTCC GTR"
-  
+
   opsRole <- submit ops do
     create OperatorRole with
       ops
@@ -91,18 +88,18 @@ test = scenario do
   let accD01 = Cdm.Account with
         accountName = None
         accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_House)
-        accountNumber = fieldWithEmptyMeta "D01011566365" 
+        accountNumber = fieldWithEmptyMeta "D01011566365"
         accountBeneficiary = None
         servicingParty = None
         id = None
-        
+
       d01Party  = Cdm.Party with
         id = Some "3993378688666"
         name =   Some (fieldWithEmptyMeta "DEALER-D01")
         account = Some accD01
         partyId = [fieldWithEmptyMeta "3993378688666"]
         person = []
-      
+
       caccD03 = Cdm.Account with
         accountName = None
         accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_Client)
@@ -110,7 +107,7 @@ test = scenario do
         accountBeneficiary = None
         servicingParty = None
         id = None
-        
+
       cd03Party  = Cdm.Party with
         id = Some "3895466770349"
         name =   Some (fieldWithEmptyMeta "CLIENT-C01")
@@ -125,7 +122,7 @@ test = scenario do
         accountBeneficiary = None
         servicingParty = None
         id = None
-        
+
       d03Party  = Cdm.Party with
         id = Some "9377538274179"
         name =   Some (fieldWithEmptyMeta "DEALER-D03")
@@ -198,20 +195,20 @@ test = scenario do
                       ]
                 ]
     ----- sef propose on behalf od c01
-  
+
   -- epCid<-submit sef do
   --   exercise sefRole SEF_ProposeBilateralTradeOnBehalf with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, base, after
- 
- 
+
+
   epCid<-submit sef do
     exercise sefRole SEF_ProposeAndAcceptClearedTradeOnBehalfBothParties with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, counterPartyClearingMember= d01, base, after
- 
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
+
   -- -- eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do exercise epCid EP.Accept with exerciser = d01_.p)
   -- passToDate $ D.date 2018 Sep 24
   -- res <- submit c01_.p do exercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
