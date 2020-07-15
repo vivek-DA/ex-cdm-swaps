@@ -1,0 +1,27 @@
+daml 1.2
+
+module Main.App.UniversalLedgerOps where
+
+import Daml.Script
+
+class UniversalLedgerOps m where
+  universalExercise : Choice t c r => ContractId t -> c -> m r
+  universalCreate : Template t => t -> m (ContractId t)
+
+instance UniversalLedgerOps Update where
+  universalExercise id command = exercise id command
+  universalCreate t = create t
+
+instance UniversalLedgerOps Commands where
+  universalExercise id command = exerciseCmd id command
+  universalCreate t = createCmd t
+
+-- TODO: Utilise this or remove if cannot do.
+class UniversalGetParty m where
+  universalGetParty : Text -> m Party
+
+instance UniversalGetParty Scenario where
+  universalGetParty party = getParty party
+
+instance UniversalGetParty Script where
+  universalGetParty party = allocatePartyWithHint party (PartyIdHint party)

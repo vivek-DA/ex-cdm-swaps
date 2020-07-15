@@ -14,6 +14,8 @@ import Main.Types
 import Main.App.Roles
 import DA.Date as D
 
+import Main.App.UniversalLedgerOps
+
 test : Scenario ()
 test = scenario do
 
@@ -21,69 +23,72 @@ test = scenario do
   cme <-  getParty "CME"
   ice <- getParty "ICE"
   ops <- getParty "LCH-OPS"
-  d03 <- getParty "D03"
-  d01 <- getParty "D01"
-  c01 <- getParty "C01"
+  d03 <- getParty "DEALER-D03"
+  d01 <- getParty "DEALER-D01"
+  c01 <- getParty "CLIENT-C01"
   sef <- getParty "SEF"
   swapsClear <- getParty "SwapsClear"
   dtcc <- getParty "DTCC GTR"
 
+  doSetup lch cme ice ops d03 d01 c01 sef swapsClear dtcc
 
+  pure ()
 
+doSetup lch cme ice ops d03 d01 c01 sef swapsClear dtcc = do
   opsRole <- submit ops do
-    create OperatorRole with
+    universalCreate OperatorRole with
       ops
   ccpInviteLCH <- submit ops do
-    exercise opsRole InviteForCCPRole with ccp = lch
+    universalExercise opsRole InviteForCCPRole with ccp = lch
   ccpLCH <- submit lch do
-    exercise ccpInviteLCH Accept_CCPRole
+    universalExercise ccpInviteLCH Accept_CCPRole
   ccpInviteICE <- submit ops do
-    exercise opsRole InviteForCCPRole with ccp = ice
+    universalExercise opsRole InviteForCCPRole with ccp = ice
   ccpICE <- submit ice do
-    exercise ccpInviteICE Accept_CCPRole
+    universalExercise ccpInviteICE Accept_CCPRole
 
   ccpInviteCME <- submit ops do
-    exercise opsRole InviteForCCPRole with ccp = cme
+    universalExercise opsRole InviteForCCPRole with ccp = cme
   ccpCME <- submit cme do
-    exercise ccpInviteCME Accept_CCPRole
+    universalExercise ccpInviteCME Accept_CCPRole
 
   sefRoleInvite <- submit lch do
-    exercise ccpLCH InviteForSEFRole with sef
+    universalExercise ccpLCH InviteForSEFRole with sef
 
   sefRole <-  submit sef do
-    exercise sefRoleInvite Accept_SEFRole
+    universalExercise sefRoleInvite Accept_SEFRole
   cs1RoleInvite <- submit lch do
-    exercise ccpLCH InviteForClearingServiceRole with clearingService = swapsClear
+    universalExercise ccpLCH InviteForClearingServiceRole with clearingService = swapsClear
 
   cs1Role <-  submit swapsClear do
-    exercise cs1RoleInvite Accept_ClearingServiceRole
+    universalExercise cs1RoleInvite Accept_ClearingServiceRole
 
   brokerRoleInvite <- submit lch do
-    exercise ccpLCH InviteForExecutingDealerRole with executingBroker= d01
+    universalExercise ccpLCH InviteForExecutingDealerRole with executingBroker= d01
 
   brokerRoleD01<-  submit d01 do
-    exercise brokerRoleInvite Accept_ExecutingBrokerRole
+    universalExercise brokerRoleInvite Accept_ExecutingBrokerRole
 
 
 
 
   cm1RoleInvite <- submit lch do
-    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d01, clearingService= swapsClear
+    universalExercise ccpLCH InviteForClearingMemberRole with clearingMember = d01, clearingService= swapsClear
 
   cm1Role <-  submit d01 do
-    exercise cm1RoleInvite Accept_ClearingMemberRole
+    universalExercise cm1RoleInvite Accept_ClearingMemberRole
 
   cm2RoleInvite <- submit lch do
-    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d03, clearingService= swapsClear
+    universalExercise ccpLCH InviteForClearingMemberRole with clearingMember = d03, clearingService= swapsClear
 
   cm2Role <-  submit d03 do
-    exercise cm2RoleInvite Accept_ClearingMemberRole
+    universalExercise cm2RoleInvite Accept_ClearingMemberRole
 
   client1RoleInvite <-  submit d03 do
-    exercise cm2Role InviteForClientRole with client = c01
+    universalExercise cm2Role InviteForClientRole with client = c01
 
   client1Role <-  submit c01 do
-    exercise client1RoleInvite Accept_ClientRole
+    universalExercise client1RoleInvite Accept_ClientRole
 
 
 
@@ -145,21 +150,21 @@ test = scenario do
         -- variationMarginAccount= "XYZ"
 
   clientAccountPend<- submit c01 do
-    exercise client1Role RequestClearingAccount with
+    universalExercise client1Role RequestClearingAccount with
       cdmParty = cd03Party
       currency = EUR
       sef
   clientAccount<- submit lch do
-    exercise clientAccountPend CCP_Approve_ClearingAccount
+    universalExercise clientAccountPend CCP_Approve_ClearingAccount
 
   brokerAccountPend<- submit d01 do
-    exercise  brokerRoleD01 EB_RequestClearingAccount with
+    universalExercise  brokerRoleD01 EB_RequestClearingAccount with
       cdmParty = d01Party
       currency = EUR
       sef
       clearingMember = d01
   -- clientAccount<- submit lch do
-  --   exercise clientAccountPend CCP_Approve_ClearingAccount
+  --   universalExercise clientAccountPend CCP_Approve_ClearingAccount
 
 
 
@@ -199,11 +204,11 @@ test = scenario do
     ----- sef propose on behalf od c01
 
   -- epCid<-submit sef do
-  --   exercise sefRole SEF_ProposeBilateralTradeOnBehalf with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, base, after
+  --   universalExercise sefRole SEF_ProposeBilateralTradeOnBehalf with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, base, after
 
 
   epCid<-submit sef do
-    exercise sefRole SEF_ProposeAndAcceptClearedTradeOnBehalfBothParties with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, counterPartyClearingMember= d01, base, after
+    universalExercise sefRole SEF_ProposeAndAcceptClearedTradeOnBehalfBothParties with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, counterPartyClearingMember= d01, base, after
 
 
 
@@ -211,15 +216,15 @@ test = scenario do
 
 
 
-  -- -- eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do exercise epCid EP.Accept with exerciser = d01_.p)
+  -- -- eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do universalExercise epCid EP.Accept with exerciser = d01_.p)
   -- passToDate $ D.date 2018 Sep 24
-  -- res <- submit c01_.p do exercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
+  -- res <- submit c01_.p do universalExercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
 
 
 
   -- testData <- testData
   -- allegedOrder<- submit client1 do
-  --   exercise clientAccount ProposeTrade with
+  --   universalExercise clientAccount ProposeTrade with
   --     sef
   --     dealer = cm2
   --     clearingService = swapsClear
@@ -228,18 +233,18 @@ test = scenario do
 
 
   -- allegedOrder<- submit sef do
-  --   exercise allegedOrder Affirm with party=sef
+  --   universalExercise allegedOrder Affirm with party=sef
 
   -- allegedOrder<- submit cm2 do
-  --   exercise allegedOrder Affirm with party=cm2
+  --   universalExercise allegedOrder Affirm with party=cm2
 
 
   -- allegedOrder<- submit cm1 do
-  --   exercise allegedOrder Affirm with party=cm1
+  --   universalExercise allegedOrder Affirm with party=cm1
 
   -- affirmedOrder<- submit sef do
-  --   exercise allegedOrder Finalize with gtr= dtcc
+  --   universalExercise allegedOrder Finalize with gtr= dtcc
 
   -- clearedTrade <- submit lch do
-  --   exercise affirmedOrder Clear
+  --   universalExercise affirmedOrder Clear
   return ()
