@@ -12,7 +12,7 @@ test : Scenario ()
 test = scenario do
 
   lch <- getParty "LCH"
-  cme <-  getParty "CME"
+  cme <- getParty "CME"
   ice <- getParty "ICE"
   ops <- getParty "LCH-OPS"
   d03 <- getParty "DEALER-D03"
