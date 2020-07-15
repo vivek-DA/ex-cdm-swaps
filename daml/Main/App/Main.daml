@@ -28,6 +28,8 @@ test = scenario do
   swapsClear <- getParty "SwapsClear"
   dtcc <- getParty "DTCC GTR"
 
+
+
   opsRole <- submit ops do
     create OperatorRole with
       ops
@@ -50,7 +52,11 @@ test = scenario do
 
   sefRole <-  submit sef do
     exercise sefRoleInvite Accept_SEFRole
+  cs1RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingServiceRole with clearingService = swapsClear
 
+  cs1Role <-  submit swapsClear do
+    exercise cs1RoleInvite Accept_ClearingServiceRole
 
   brokerRoleInvite <- submit lch do
     exercise ccpLCH InviteForExecutingDealerRole with executingBroker= d01
@@ -80,11 +86,7 @@ test = scenario do
     exercise client1RoleInvite Accept_ClientRole
 
 
-  cs1RoleInvite <- submit lch do
-    exercise ccpLCH InviteForClearingServiceRole with clearingService = sef
 
-  cs1Role <-  submit sef do
-    exercise cs1RoleInvite Accept_ClearingServiceRole
   let accD01 = Cdm.Account with
         accountName = None
         accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_House)
