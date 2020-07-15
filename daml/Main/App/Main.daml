@@ -54,6 +54,16 @@ test = scenario do
   sefRole <-  submit sef do
     exercise sefRoleInvite Accept_SEFRole
 
+
+  brokerRoleInvite <- submit lch do
+    exercise ccpLCH InviteForExecutingDealerRole with executingBroker= d01
+
+  brokerRoleD01<-  submit d01 do
+    exercise brokerRoleInvite Accept_ExecutingBrokerRole
+
+
+
+
   cm1RoleInvite <- submit lch do
     exercise ccpLCH InviteForClearingMemberRole with clearingMember = d01
 
@@ -139,12 +149,20 @@ test = scenario do
     exercise client1Role RequestClearingAccount with
       cdmParty = cd03Party
       currency = EUR
+      sef
   clientAccount<- submit lch do
     exercise clientAccountPend CCP_Approve_ClearingAccount
-    -- damlParty : Party
-    -- partyId : Text
-    -- account : Text
-    -- name : Text
+
+  brokerAccountPend<- submit d01 do
+    exercise  brokerRoleD01 EB_RequestClearingAccount with
+      cdmParty = d01Party
+      currency = EUR
+      sef
+      clearingMember = d01
+  -- clientAccount<- submit lch do
+  --   exercise clientAccountPend CCP_Approve_ClearingAccount
+
+
 
 
 
@@ -179,13 +197,27 @@ test = scenario do
                           version = Some 1
                       ]
                 ]
-  epCid<-submit c01 do
-    exercise clientAccount ProposeTrade with counterParty =d01_ , base, after
+    ----- sef propose on behalf od c01
+  
+  -- epCid<-submit sef do
+  --   exercise sefRole SEF_ProposeBilateralTradeOnBehalf with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, base, after
+ 
+ 
+  epCid<-submit sef do
+    exercise sefRole SEF_ProposeAndAcceptClearedTradeOnBehalfBothParties with tradeProposer=c01 ,clearingMember=d03,  counterParty = d01_, counterPartyClearingMember= d01, base, after
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  -- -- eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do exercise epCid EP.Accept with exerciser = d01_.p)
+  -- passToDate $ D.date 2018 Sep 24
+  -- res <- submit c01_.p do exercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
 
 
-  eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do exercise epCid EP.Accept with exerciser = d01_.p)
-  passToDate $ D.date 2018 Sep 24
-  res <- submit c01_.p do exercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
+
   -- testData <- testData
   -- allegedOrder<- submit client1 do
   --   exercise clientAccount ProposeTrade with

@@ -10,7 +10,7 @@ import Org.Isda.Cdm.Classes hiding (Party, exercise)
 import DA.Optional
 import Main.Types
 import Main.Event.Proposal as EP
-
+import Main.Event.Instance
 
 data AccountStatus = Pending|Active|Disabled
   deriving (Eq, Show)
@@ -29,8 +29,12 @@ template ClearingAccount
     currency: Currency
     ccp: Party
     status: AccountStatus
+    sef: Optional Party
   where
     signatory accountHolder, clearingMember, ccp
+    key (accountHolder, clearingMember, ccp) : (Party, Party, Party)
+    observer fromSome sef
+    maintainer key._3
     controller accountHolder can
       nonconsuming ProposeTrade : ContractId EventProposal
         with
@@ -100,10 +104,10 @@ template CCPRole
         do
           create ClearingMemberRoleInvite with ..
 
-      nonconsuming InviteForExecutingDealerRole : ContractId ExecutingDealerRoleInvite
-        with executingDealer : Party
+      nonconsuming InviteForExecutingDealerRole : ContractId ExecutingBrokerRoleInvite
+        with executingBroker : Party
         do
-          create ExecutingDealerRoleInvite with ..
+          create ExecutingBrokerRoleInvite with ..
 
       nonconsuming InviteForClearingServiceRole : ContractId ClearingServiceRoleInvite
         with clearingService : Party
@@ -157,6 +161,50 @@ template ClientRoleInvite
         do
           create ClientRole with ..
 
+template SefDelegation
+  with
+    accountHolder: Party
+    clearingMember : Party
+    ccp: Party
+    sef: Party
+  where
+    signatory clearingMember, accountHolder, ccp
+    key (accountHolder, clearingMember, ccp, sef) : (Party, Party, Party, Party)
+    maintainer key._2
+    controller sef can
+      nonconsuming ProposeBilateralTradeOnBehalf : ContractId EventProposal
+        with
+          counterParty: PartyWithId
+          base: BaseEvent
+          after: PostInceptionState
+        do
+          let dKey = (accountHolder,clearingMember, ccp)
+          debug ("in ProposeBilateralTradeOnBehalf" <> show dKey)
+          exerciseByKey @ClearingAccount  dKey ProposeTrade with ..
+
+      nonconsuming AcceptClearedTradeOnBehalf : Either
+                             (ContractId EventProposal)
+                             (ContractId Main.Event.Instance.EventInstance)
+          with
+            epCid: ContractId EventProposal
+        do
+          exercise epCid EP.Accept with exerciser = accountHolder
+
+
+      nonconsuming ProposeAndAcceptClearedTradeOnBehalfBothParties :  Either
+                             (ContractId EventProposal)
+                             (ContractId Main.Event.Instance.EventInstance)
+        with
+          counterParty: PartyWithId
+          counterPartyClearingMember: Party
+          base: BaseEvent
+          after: PostInceptionState
+        do
+          epCid<- exerciseByKey @ClearingAccount (accountHolder,clearingMember, ccp) ProposeTrade with ..
+          exerciseByKey @SefDelegation (counterParty.p, counterPartyClearingMember, ccp, sef) AcceptClearedTradeOnBehalf with epCid
+
+
+
 
 
 template ClientRole
@@ -172,32 +220,45 @@ template ClientRole
         with
           cdmParty : Cdm.Party
           currency: Currency
+          sef: Party
         do
+          create SefDelegation with accountHolder =client,  ..
+          create ClearingAccount with status = Pending, accountHolder=client, sef = Some sef, ..
 
-          create ClearingAccount with status = Pending, accountHolder=client, ..
 
 
 
-template ExecutingDealerRoleInvite
+template ExecutingBrokerRoleInvite
   with
     ccp : Party
-    executingDealer: Party
+    executingBroker: Party
   where
     signatory ccp
 
-    controller executingDealer can
-      Accept_ExecutingDealerRole : ContractId ExecutingDealerRole
+    controller executingBroker can
+      Accept_ExecutingBrokerRole : ContractId ExecutingBrokerRole
         do
-          create ExecutingDealerRole with ..
+          create ExecutingBrokerRole with ..
 
 
 
-template ExecutingDealerRole
+template ExecutingBrokerRole
   with
     ccp : Party
-    executingDealer: Party
+    executingBroker: Party
   where
-    signatory ccp, executingDealer
+    signatory ccp, executingBroker
+    
+    controller executingBroker can
+      nonconsuming EB_RequestClearingAccount : ContractId ClearingAccount
+        with
+          cdmParty : Cdm.Party
+          currency: Currency
+          sef: Party
+          clearingMember: Party
+        do
+          create SefDelegation with accountHolder =executingBroker,  ..
+          create ClearingAccount with status = Pending, accountHolder=executingBroker, sef = Some sef, ..
 
 
 template ClearingServiceRole
@@ -229,6 +290,32 @@ template SEFRole
     sef: Party
   where
     signatory ccp, sef
+    controller sef can
+      nonconsuming SEF_ProposeBilateralTradeOnBehalf : ContractId EventProposal
+        with
+          tradeProposer: Party 
+          clearingMember: Party
+          counterParty: PartyWithId
+          base: BaseEvent
+          after: PostInceptionState
+        do
+          let delegationKey= (tradeProposer, clearingMember, ccp, sef)
+          debug ("in SEF Role " <>  show delegationKey)
+          exerciseByKey @SefDelegation delegationKey ProposeBilateralTradeOnBehalf  with ..
+
+      nonconsuming SEF_ProposeAndAcceptClearedTradeOnBehalfBothParties :  Either
+                             (ContractId EventProposal)
+                             (ContractId Main.Event.Instance.EventInstance)
+        with
+          tradeProposer : Party
+          counterParty: PartyWithId
+          clearingMember: Party
+          counterPartyClearingMember: Party
+          base: BaseEvent
+          after: PostInceptionState
+        do
+          exerciseByKey @SefDelegation (tradeProposer, clearingMember, ccp, sef) ProposeAndAcceptClearedTradeOnBehalfBothParties  with ..
+
 
 
 template SEFRoleInvite
@@ -242,4 +329,5 @@ template SEFRoleInvite
       Accept_SEFRole : ContractId SEFRole
         do
           create SEFRole with ..
+
 
