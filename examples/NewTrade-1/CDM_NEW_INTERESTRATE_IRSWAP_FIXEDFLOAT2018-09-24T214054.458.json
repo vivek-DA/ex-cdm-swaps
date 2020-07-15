@@ -1,13 +1,12 @@
 {
-  "choice": "ProposeNewTrade",
+  "choice": "SEF_ProposeBilateralTradeOnBehalf",
   "argument": {
-    "ps": [{
-      "p": "DEALER-D01",
-      "id": "3993378688666"
-    }, {
-      "p": "CLIENT-C01",
-      "id": "3895466770349"
-    }],
+    "tradeProposer": "CLIENT-C01",
+    "clearingMember": "DEALER-D03",
+    "counterParty": {
+      "id": "3993378688666",
+      "p": "DEALER-D01"
+    },
     "base": {
       "action": "New",
       "eventDate" : "2018-09-24",

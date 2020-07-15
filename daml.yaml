@@ -7,12 +7,12 @@ parties:
 - CME
 - ICE
 - LCH-OPS
-- D03
-- D01
-- C01
+- DEALER-D03
+- DEALER-D01
+- CLIENT-C01
 - SEF
 - SwapsClear
-- DTCC GTR
+- DTCC GT
 exposed-modules:
 - Main
 dependencies:

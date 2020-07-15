@@ -139,8 +139,7 @@ object Commands {
 
   def loadEvents(directory: String): Unit = {
     utils.Json.loadJsons(directory).foreach { json =>
-      val party = json.getAsJsonObject("argument").getAsJsonArray("ps").iterator.next.getAsJsonObject.get("p").getAsString
-      party2dataLoading(party).loadEvent(json)
+      party2dataLoading("SEF").loadEvent(json)
     }
   }
 

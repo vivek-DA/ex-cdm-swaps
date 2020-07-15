@@ -22,8 +22,8 @@ class DataLoading(party: String, client: LedgerClient, schema: Schema) {
 
   private val decoder = new Decoder(schema)
 
-  private val mas = new InMemoryDataStore(party, "MasterAgreementInstance", client)
-  private val cis  = new InMemoryDataStore(party, "ContractInstance", client)
+  private val sefRoleTemplateName = "SEFRole"
+  private val sefRoles = new InMemoryDataStore(party, sefRoleTemplateName, client)
 
   def loadRateFixing
   (
@@ -116,35 +116,20 @@ class DataLoading(party: String, client: LedgerClient, schema: Schema) {
   def loadEvent(data: JsonObject): Unit = {
     // Look up ciCid and add it if contractReference is part of argument
     val arg = data.get("argument").getAsJsonObject
-    val argEnriched = enrichArg(arg)
 
     val choice = data.get("choice").getAsString
-    val argRecord = decoder.decode(argEnriched, choice)
+    val argRecord = decoder.decode(arg, choice)
 
-    val parties = argRecord.getList[Record]("ps").map(_.get[Party]("p").getValue)
-    val maO = Cdm.findMasterAgreement(parties, mas.getData())
+    val sefRole = sefRoles.getData().headOption // TODO: Only role we have now is for LCH-SEF.
 
-    maO match {
-      case Some(ma) =>
-        val cmd = new ExerciseCommand(client.getTemplateId("MasterAgreementInstance"), ma._1, choice, argRecord)
+    sefRole match {
+      case Some((sefRoleId, _)) =>
+        val cmd = new ExerciseCommand(client.getTemplateId(sefRoleTemplateName), sefRoleId, choice, argRecord)
         client.sendCommands(party, List(cmd))
 
       case None =>
-        logger.info("master agreement not found")
+        logger.info("SEF Role not found.")
     }
   }
 
-  private def enrichArg(arg: JsonObject): JsonObject = {
-    val argCloned = arg.deepCopy()
-    val argWithExerciser = arg.addGeneric("exerciser", party)
-    if (arg.has("contractReference")) {
-      val contractReference = arg.get("contractReference").getAsString
-      val ciO = cis.getData().find(_._2.get[Record]("d").get[Text]("rosettaKey").getValue == contractReference)
-      ciO match {
-        case Some(ci) => argWithExerciser.addProperty("ciCid", ci._1)
-        case None => logger.info("contract not found")
-      }
-    }
-    argWithExerciser
-  }
 }
