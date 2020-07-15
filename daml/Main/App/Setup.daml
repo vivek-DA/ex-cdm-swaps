@@ -56,6 +56,11 @@ initialize = do
 
   sefRole <-  submit sef do
     exerciseCmd sefRoleInvite Accept_SEFRole
+  cs1RoleInvite <- submit lch do
+    exerciseCmd ccpLCH InviteForClearingServiceRole with clearingService = swapsClear
+
+  cs1Role <-  submit swapsClear do
+    exerciseCmd cs1RoleInvite Accept_ClearingServiceRole
 
 
   brokerRoleInvite <- submit lch do
@@ -68,13 +73,13 @@ initialize = do
 
 
   cm1RoleInvite <- submit lch do
-    exerciseCmd ccpLCH InviteForClearingMemberRole with clearingMember = d01
+    exerciseCmd ccpLCH InviteForClearingMemberRole with clearingMember = d01, clearingService= swapsClear
 
   cm1Role <-  submit d01 do
     exerciseCmd cm1RoleInvite Accept_ClearingMemberRole
 
   cm2RoleInvite <- submit lch do
-    exerciseCmd ccpLCH InviteForClearingMemberRole with clearingMember = d03
+    exerciseCmd ccpLCH InviteForClearingMemberRole with clearingMember = d03, clearingService= swapsClear
 
   cm2Role <-  submit d03 do
     exerciseCmd cm2RoleInvite Accept_ClearingMemberRole
@@ -86,11 +91,6 @@ initialize = do
     exerciseCmd client1RoleInvite Accept_ClientRole
 
 
-  cs1RoleInvite <- submit lch do
-    exerciseCmd ccpLCH InviteForClearingServiceRole with clearingService = sef
-
-  cs1Role <-  submit sef do
-    exerciseCmd cs1RoleInvite Accept_ClearingServiceRole
   let accD01 = Cdm.Account with
         accountName = None
         accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_House)
