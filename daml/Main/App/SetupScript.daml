@@ -9,6 +9,7 @@ module Main.App.SetupScript where
 import Daml.Script
 import Main.App.Setup
 import Main.App.UniversalLedgerOps
+import DA.Date (datetime, Month(Oct))
 
 getPartyS : Text -> Script Party
 getPartyS name = universalGetParty name
@@ -29,6 +30,8 @@ initialize = do
   dtcc <- getPartyS "DTCC GTR"
 
   doSetup lch cme ice ops d03 d01 c01 sef swapsClear dtcc
+
+  setTime (datetime 2018 Oct 26 12 00 00)
 
   debug "Finished ledger setup."
   return ()
