@@ -96,13 +96,15 @@ template CCPRole
     ops : Party
     ccp: Party
   where
-    signatory ops, ccp
+    signatory ccp, ops
 
     controller ccp can
       nonconsuming InviteForClearingMemberRole : ContractId ClearingMemberRoleInvite
-        with clearingMember : Party
+        with 
+          clearingMember : Party
+          clearingService : Party
         do
-          create ClearingMemberRoleInvite with ..
+          exerciseByKey @ClearingServiceRole (clearingService, ccp)  CS_InviteForClearingMemberRole with ..
 
       nonconsuming InviteForExecutingDealerRole : ContractId ExecutingBrokerRoleInvite
         with executingBroker : Party
@@ -118,26 +120,53 @@ template CCPRole
         with sef : Party
         do
           create SEFRoleInvite with ..
+      
+      -- nonconsuming TriggerLifeCycleOnEventInstance: ContractId LifecycleResult
+
 
 
 template ClearingMemberRoleInvite
   with
     ccp : Party
     clearingMember: Party
+    clearingService: Party
   where
-    signatory ccp
+    signatory ccp, clearingService
     controller clearingMember can
       Accept_ClearingMemberRole : ContractId ClearingMemberRole
         do
+          cid<-create ClearingServiceMemeberDelegationInvite with ..
+          exercise cid Accept_ClearingServiceMemeberDelegationInvite
           create ClearingMemberRole  with ..
 
 
+template ClearingServiceMemeberDelegationInvite
+  with
+    ccp: Party
+    clearingMember: Party
+    clearingService: Party
+  where
+    signatory ccp, clearingMember, 
+    controller clearingService can
+      Accept_ClearingServiceMemeberDelegationInvite : ContractId ClearingServiceMemeberDelegation
+        do
+          create ClearingServiceMemeberDelegation with ..
+          
+
+template ClearingServiceMemeberDelegation
+  with
+    ccp: Party
+    clearingMember: Party
+    clearingService: Party
+  where
+    signatory ccp, clearingMember, clearingService
 
 
 template ClearingMemberRole
   with
     ccp : Party
     clearingMember: Party
+    clearingService : Party
   where
     signatory ccp, clearingMember
 
@@ -146,6 +175,17 @@ template ClearingMemberRole
         with client : Party
         do
           create ClientRoleInvite with ..
+    
+    controller ccp can
+      nonconsuming CM_TriggerLifeCycle: LifecycleResult
+        with 
+          epCid : ContractId EventInstance
+          client : Party
+        do
+          exerciseByKey @ClientRole (client, clearingMember, ccp)  TriggerLifeCycle with ..
+
+
+
 
 
 
@@ -159,7 +199,12 @@ template ClientRoleInvite
     controller client can
       Accept_ClientRole : ContractId ClientRole
         do
+
           create ClientRole with ..
+
+
+
+
 
 template SefDelegation
   with
@@ -214,7 +259,8 @@ template ClientRole
     ccp: Party
   where
     signatory clearingMember, client, ccp
-
+    key (client, clearingMember, ccp) : (Party, Party, Party)
+    maintainer key._3
     controller client can
       nonconsuming RequestClearingAccount : ContractId ClearingAccount
         with
@@ -224,7 +270,13 @@ template ClientRole
         do
           create SefDelegation with accountHolder =client,  ..
           create ClearingAccount with status = Pending, accountHolder=client, sef = Some sef, ..
-
+    controller clearingMember can
+      TriggerLifeCycle : LifecycleResult
+        with 
+          epCid : ContractId EventInstance
+        do
+          exercise epCid Lifecycle with exerciser = client, ciCids = [], ctiCids = []
+          
 
 
 
@@ -265,8 +317,26 @@ template ClearingServiceRole
   with
     ccp : Party
     clearingService: Party
+    observers : [Party]
+
   where
     signatory ccp, clearingService
+    observer observers
+    key (clearingService, ccp): (Party, Party)
+    maintainer key._2
+    controller ccp can
+      AddObserver : ContractId ClearingServiceRole
+        with
+          newObserver: Party
+        do
+          create this with observers = newObserver :: observers
+
+      nonconsuming CS_InviteForClearingMemberRole : ContractId ClearingMemberRoleInvite
+        with 
+          clearingMember : Party
+        do
+          create ClearingMemberRoleInvite with ..
+          
 
 
 template ClearingServiceRoleInvite
@@ -279,7 +349,7 @@ template ClearingServiceRoleInvite
     controller clearingService can
       Accept_ClearingServiceRole : ContractId ClearingServiceRole
         do
-          create ClearingServiceRole with ..
+          create ClearingServiceRole with observers =[], ..
 
 
 
