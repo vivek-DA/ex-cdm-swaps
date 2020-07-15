@@ -1,0 +1,34 @@
+-- Copyright (c) 2020 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved.
+-- SPDX-License-Identifier: Apache-2.0
+
+
+daml 1.2
+
+module Main.App.SetupScript where
+
+import Daml.Script
+import Main.App.Setup
+import Main.App.UniversalLedgerOps
+
+getPartyS : Text -> Script Party
+getPartyS name = universalGetParty name
+
+initialize : Script ()
+initialize = do
+  debug "Started to setup ledger..."
+
+  lch <- getPartyS "LCH"
+  cme <- getPartyS "CME"
+  ice <- getPartyS "ICE"
+  ops <- getPartyS "LCH-OPS"
+  d03 <- getPartyS "D03"
+  d01 <- getPartyS "D01"
+  c01 <- getPartyS "C01"
+  sef <- getPartyS "SEF"
+  swapsClear <- getPartyS "SwapsClear"
+  dtcc <- getPartyS "DTCC GTR"
+
+  doSetup lch cme ice ops d03 d01 c01 sef swapsClear dtcc
+
+  debug "Finished ledger setup."
+  return ()
