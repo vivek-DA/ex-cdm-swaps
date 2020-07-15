@@ -6,37 +6,209 @@ daml 1.2
 
 module Main.App.Main where
 
-type AssetId = ContractId Asset
+import Org.Isda.Cdm.EventSpecificationModule qualified as Cdm hiding (exercise)
+import Main.App.Utils
+import Org.Isda.Cdm.Classes hiding (Party, exercise)
+import DA.Optional
+import Main.Types
+import Main.Event.Proposal as EP
+import Test.Utils hiding (fieldWithEmptyMeta, emptyBaseEvent)
+import Main.Event.Instance
+import Main.App.Roles
+import DA.Date as D
 
-template Asset
-  with
-    issuer : Party
-    owner  : Party
-    name   : Text
-  where
-    ensure name /= ""
-    signatory issuer
-    controller owner can
-      Give : AssetId
-        with
-          newOwner : Party
-        do
-          create this with
-            owner = newOwner
+test : Scenario ()
+test = scenario do
 
-setup : Scenario AssetId
-setup = scenario do
-  alice <- getParty "Alice"
-  bob <- getParty "Bob"
+  lch <- getParty "LCH"
+  cme <-  getParty "CME"
+  ice <- getParty "ICE"
+  ops <- getParty "LCH-OPS"
+  d03 <- getParty "D03"
+  d01 <- getParty "D01"
+  c01 <- getParty "C01"
+  sef <- getParty "SEF"
+  swapsClear <- getParty "SwapsClear"
+  dtcc <- getParty "DTCC GTR"
+  
+  opsRole <- submit ops do
+    create OperatorRole with
+      ops
+  ccpInviteLCH <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = lch
+  ccpLCH <- submit lch do
+    exercise ccpInviteLCH Accept_CCPRole
+  ccpInviteICE <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = ice
+  ccpICE <- submit ice do
+    exercise ccpInviteICE Accept_CCPRole
 
-  aliceTV <- submit alice do
-    create Asset with
-      issuer = alice
-      owner = alice
-      name = "TV"
+  ccpInviteCME <- submit ops do
+    exercise opsRole InviteForCCPRole with ccp = cme
+  ccpCME <- submit cme do
+    exercise ccpInviteCME Accept_CCPRole
 
-  bobTV <- submit alice do
-    exercise aliceTV Give with newOwner = bob
+  sefRoleInvite <- submit lch do
+    exercise ccpLCH InviteForSEFRole with sef
 
-  submit bob do
-    exercise bobTV Give with newOwner = alice
+  sefRole <-  submit sef do
+    exercise sefRoleInvite Accept_SEFRole
+
+  cm1RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d01
+
+  cm1Role <-  submit d01 do
+    exercise cm1RoleInvite Accept_ClearingMemberRole
+
+  cm2RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingMemberRole with clearingMember = d03
+
+  cm2Role <-  submit d03 do
+    exercise cm2RoleInvite Accept_ClearingMemberRole
+
+  client1RoleInvite <-  submit d03 do
+    exercise cm2Role InviteForClientRole with client = c01
+
+  client1Role <-  submit c01 do
+    exercise client1RoleInvite Accept_ClientRole
+
+
+  cs1RoleInvite <- submit lch do
+    exercise ccpLCH InviteForClearingServiceRole with clearingService = sef
+
+  cs1Role <-  submit sef do
+    exercise cs1RoleInvite Accept_ClearingServiceRole
+  let accD01 = Cdm.Account with
+        accountName = None
+        accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_House)
+        accountNumber = fieldWithEmptyMeta "D01011566365" 
+        accountBeneficiary = None
+        servicingParty = None
+        id = None
+        
+      d01Party  = Cdm.Party with
+        id = Some "3993378688666"
+        name =   Some (fieldWithEmptyMeta "DEALER-D01")
+        account = Some accD01
+        partyId = [fieldWithEmptyMeta "3993378688666"]
+        person = []
+      
+      caccD03 = Cdm.Account with
+        accountName = None
+        accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_Client)
+        accountNumber = fieldWithEmptyMeta "C01728346828"
+        accountBeneficiary = None
+        servicingParty = None
+        id = None
+        
+      cd03Party  = Cdm.Party with
+        id = Some "3895466770349"
+        name =   Some (fieldWithEmptyMeta "CLIENT-C01")
+        account = Some caccD03
+        partyId = [fieldWithEmptyMeta "3895466770349"]
+        person = []
+
+      accD03 = Cdm.Account with
+        accountName = None
+        accountType = Some (fieldWithEmptyMeta Cdm.AccountTypeEnum_House)
+        accountNumber = fieldWithEmptyMeta "D03225622378"
+        accountBeneficiary = None
+        servicingParty = None
+        id = None
+        
+      d03Party  = Cdm.Party with
+        id = Some "9377538274179"
+        name =   Some (fieldWithEmptyMeta "DEALER-D03")
+        account = Some accD03
+        partyId = [fieldWithEmptyMeta "9377538274179"]
+        person = []
+
+
+
+
+        -- What about these properties?
+        -- agreementId= "ISDA-CM1-Client1"
+        -- agreementType = ISDA
+        -- agreementStart= date 2020 Jan 01
+        -- agreementEnd= date 2025 Jan 01
+        -- governingLaw= NY
+        -- initialMarginAccount= "ABC"
+        -- variationMarginAccount= "XYZ"
+
+  clientAccountPend<- submit c01 do
+    exercise client1Role RequestClearingAccount with
+      cdmParty = cd03Party
+      currency = EUR
+  clientAccount<- submit lch do
+    exercise clientAccountPend CCP_Approve_ClearingAccount
+    -- damlParty : Party
+    -- partyId : Text
+    -- account : Text
+    -- name : Text
+
+
+
+  let d01_ = PartyWithId with p = d01, id = fromSome d01Party.id
+      c01_ = PartyWithId with p = c01, id = fromSome cd03Party.id
+      ps_d01_ = Counterparty with
+        damlParty=d01
+        partyId=fromSome d01Party.id
+        account = "D01011566365"
+        name= "DEALER-D01"
+      ps_cd03_ = Counterparty with
+        damlParty=c01
+        partyId=fromSome cd03Party.id
+        account = "C01728346828"
+        name= "CLIENT-C01"
+      contract = buildCds 20000000.0 (ps_d01_, ps_cd03_) [(1, "CAXMKVEHOV"), (1, "CAXMKVEHOV_2")]
+  let after = PostInceptionState with
+                creditLimitInformation = None
+                tradeWarehouseWorkflow = None
+                contract = contract
+  let base = emptyBaseEvent with
+              action = Cdm.ActionEnum_New
+              eventDate = D.date 2018 Sep 24
+              eventIdentifier =
+                [ Identifier with
+                    id = None
+                    issuer = None
+                    issuerReference = None
+                    assignedIdentifier =
+                      [ AssignedIdentifier with
+                          identifier = fieldWithEmptyMeta "RTPBD5KA8P"
+                          version = Some 1
+                      ]
+                ]
+  epCid<-submit c01 do
+    exercise clientAccount ProposeTrade with counterParty =d01_ , base, after
+
+
+  eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do exercise epCid EP.Accept with exerciser = d01_.p)
+  passToDate $ D.date 2018 Sep 24
+  res <- submit c01_.p do exercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
+  -- testData <- testData
+  -- allegedOrder<- submit client1 do
+  --   exercise clientAccount ProposeTrade with
+  --     sef
+  --     dealer = cm2
+  --     clearingService = swapsClear
+  --     base = testData.base
+  --     after = testData.after
+
+
+  -- allegedOrder<- submit sef do
+  --   exercise allegedOrder Affirm with party=sef
+
+  -- allegedOrder<- submit cm2 do
+  --   exercise allegedOrder Affirm with party=cm2
+
+
+  -- allegedOrder<- submit cm1 do
+  --   exercise allegedOrder Affirm with party=cm1
+
+  -- affirmedOrder<- submit sef do
+  --   exercise allegedOrder Finalize with gtr= dtcc
+
+  -- clearedTrade <- submit lch do
+  --   exercise affirmedOrder Clear
+  return ()
