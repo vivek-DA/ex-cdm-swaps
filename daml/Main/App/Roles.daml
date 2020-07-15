@@ -2,18 +2,16 @@ daml 1.2
 
 module Main.App.Roles where
 
-import Main.App.Clearing
 
 import Org.Isda.Cdm.EventSpecificationModule.Types.EventSpec (BaseEvent)
-import Org.Isda.Cdm.Classes (Account, PostInceptionState)
 import Org.Isda.Cdm.EventSpecificationModule qualified as Cdm hiding (exercise)
 import Main.App.Utils
 import Org.Isda.Cdm.Classes hiding (Party, exercise)
 import DA.Optional
-import Main.Event.Instance
-import Main.Event.Proposal hiding (Accept)
 import Main.Types
-import Main.App.Utils
+import Main.Event.Proposal as EP
+import Test.Utils hiding (fieldWithEmptyMeta, emptyBaseEvent)
+import Main.Event.Instance
 
 import DA.Date as D
 
@@ -426,8 +424,13 @@ test = scenario do
                           version = Some 1
                       ]
                 ]
-  submit c01 do
+  epCid<-submit c01 do
     exercise clientAccount ProposeTrade with counterParty =d01_ , base, after
+
+
+  eiCid <- fromRightS "Unknown error" =<< (submit d01_.p do exercise epCid EP.Accept with exerciser = d01_.p)
+  passToDate $ D.date 2018 Sep 24
+  res <- submit c01_.p do exercise eiCid Lifecycle with exerciser = c01_.p, ciCids = [], ctiCids = []
   -- testData <- testData
   -- allegedOrder<- submit client1 do
   --   exercise clientAccount ProposeTrade with
